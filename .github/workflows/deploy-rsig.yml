@@ -1,0 +1,106 @@
+name: Deploy RSIG Frontend
+on:
+  workflow_dispatch:
+  push:
+    branches: [ develop ]
+
+jobs:
+  define-environment:
+    name: Set environment
+    runs-on: ubuntu-latest
+    outputs:
+      env_name: ${{ steps.define_environment.outputs.env_name }}
+      target_branch: ${{ steps.define_environment.outputs.target_branch }}
+    steps:
+      - name: Set the environment based on the branch
+        id: define_environment
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/develop" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "env_name=development" >> $GITHUB_OUTPUT
+          fi
+      - name: Print the environment
+        run: echo "The environment is ${{ steps.define_environment.outputs.env_name }}"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: define-environment
+    environment: ${{ needs.define-environment.outputs.env_name }}
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.define-environment.outputs.target_branch }}
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 'v20.9.0'
+
+      - name: Validate required variables and secrets
+        run: |
+          missing_vars=()
+
+          # Check for required variables
+          [ -z "${{ secrets.REACT_APP_MAPBOX_TOKEN }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_TOKEN")
+          [ -z "${{ secrets.VITE_MAPBOX_TOKEN }}" ] && missing_vars+=("secrets.VITE_MAPBOX_TOKEN")
+          [ -z "${{ secrets.REACT_APP_MAPBOX_STYLE_URL }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_STYLE_URL")
+          [ -z "${{ vars.REACT_APP_STAC_API_URL }}" ] && missing_vars+=("vars.REACT_APP_STAC_API_URL")
+          [ -z "${{ vars.REACT_APP_BASE_PATH }}" ] && missing_vars+=("vars.REACT_APP_BASE_PATH")
+          [ -z "${{ vars.REACT_APP_RASTER_API_URL }}" ] && missing_vars+=("vars.REACT_APP_RASTER_API_URL")
+
+          # If any variables are missing, print them and exit with an error
+          if [ ${#missing_vars[@]} -ne 0 ]; then
+            echo "Error: The following required variables are missing:"
+            printf '%s\n' "${missing_vars[@]}"
+            exit 1
+          fi
+        shell: bash
+
+      - name: Build  🔧
+        run: |
+          echo REACT_APP_MAPBOX_TOKEN="${{ secrets.REACT_APP_MAPBOX_TOKEN }}" >> .env
+          echo VITE_MAPBOX_TOKEN="${{ secrets.VITE_MAPBOX_TOKEN }}" >> .env
+          echo REACT_APP_MAPBOX_STYLE_URL="${{ secrets.REACT_APP_MAPBOX_STYLE_URL }}" >> .env
+          echo REACT_APP_STAC_API_URL="${{ vars.REACT_APP_STAC_API_URL }}" >> .env
+          echo REACT_APP_BASE_PATH="${{ vars.REACT_APP_BASE_PATH }}" >> .env
+          echo REACT_APP_RASTER_API_URL="${{ vars.REACT_APP_RASTER_API_URL }}" >> .env
+          npm install --force
+          CI=false npm run build
+
+      - name: Upload build folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: build_folder
+          path: ./build
+
+
+  deploy:
+    name: Deploy RSIG Frontend to ${{ needs.define-environment.outputs.env_name }} 🚀
+    needs:
+      - build
+      - define-environment
+    environment: ${{ needs.define-environment.outputs.env_name }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    runs-on: ubuntu-latest
+    steps:
+      
+      - name: Download build folder
+        uses: actions/download-artifact@v4
+        with:
+          name: build_folder
+          path: ./build
+
+      - name: ConfigureAWS Credentials 
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.DEPLOYMENT_ROLE_ARN }}
+          role-session-name: ${{ github.repository_owner}}
+          aws-region: us-west-2
+      
+      - name: Upload to S3
+        run: |
+          aws s3 sync "./build" s3://${{ vars.DEPLOYMENT_BUCKET }} --cache-control max-age=30,must-revalidate,s-maxage=604800 --delete

@@ -4,19 +4,20 @@ Template for the custom interfaces
 
 ## Pre requisities
 
-- Install node & npm
-- use latest node version
-  - if using nvm, run `nvm use`
+- Install node & npm.
+  if using nvm, run :
+  - `nvm install 20`
+  - `nvm use 20`
 
 ## Install dependency
 
-run `yarn`
+run `npm install`
 
 ## Run application in Local
 
 - create `.env.local` a copy of `.env.local-sample` with the appropriate tokens
-- run `yarn start`
+- run `npm run start`
 
 ## Bundle using webpack
 
-run `yarn build`
+run `npm run build`
