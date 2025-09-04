@@ -42,8 +42,7 @@ jobs:
 
           # Check for required variables
           [ -z "${{ secrets.REACT_APP_MAPBOX_TOKEN }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_TOKEN")
-          [ -z "${{ secrets.VITE_MAPBOX_TOKEN }}" ] && missing_vars+=("secrets.VITE_MAPBOX_TOKEN")
-          [ -z "${{ secrets.REACT_APP_MAPBOX_STYLE_URL }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_STYLE_URL")
+          [ -z "${{ vars.REACT_APP_MAPBOX_STYLE_URL }}" ] && missing_vars+=("vars.REACT_APP_MAPBOX_STYLE_URL")
           [ -z "${{ vars.REACT_APP_STAC_API_URL }}" ] && missing_vars+=("vars.REACT_APP_STAC_API_URL")
           [ -z "${{ vars.REACT_APP_BASE_PATH }}" ] && missing_vars+=("vars.REACT_APP_BASE_PATH")
           [ -z "${{ vars.REACT_APP_RASTER_API_URL }}" ] && missing_vars+=("vars.REACT_APP_RASTER_API_URL")
@@ -59,8 +58,7 @@ jobs:
       - name: Build  🔧
         run: |
           echo REACT_APP_MAPBOX_TOKEN="${{ secrets.REACT_APP_MAPBOX_TOKEN }}" >> .env
-          echo VITE_MAPBOX_TOKEN="${{ secrets.VITE_MAPBOX_TOKEN }}" >> .env
-          echo REACT_APP_MAPBOX_STYLE_URL="${{ secrets.REACT_APP_MAPBOX_STYLE_URL }}" >> .env
+          echo REACT_APP_MAPBOX_STYLE_URL="${{ vars.REACT_APP_MAPBOX_STYLE_URL }}" >> .env
           echo REACT_APP_STAC_API_URL="${{ vars.REACT_APP_STAC_API_URL }}" >> .env
           echo REACT_APP_BASE_PATH="${{ vars.REACT_APP_BASE_PATH }}" >> .env
           echo REACT_APP_RASTER_API_URL="${{ vars.REACT_APP_RASTER_API_URL }}" >> .env
