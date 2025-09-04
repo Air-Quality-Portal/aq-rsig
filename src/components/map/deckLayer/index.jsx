@@ -116,7 +116,8 @@ export function DeckGlLayerManager({
         const bounds = calculateGeoJSONBounds(layerData.features);
         const rasterLayers = layerData.features.slice(0, 1).map((feature, index) => {
           const { collection, id: itemId, properties } = feature;
-          const tileUrl = buildRasterTileUrl(collection, itemId, { assets: 'cog_default', colormap: 'plasma', rescale: '19816169791488, 7981616979148800', nodata: '-9999' });
+          // const tileUrl = buildRasterTileUrl(collection, itemId, { assets: 'cog_default', colormap: 'plasma', rescale: '19816169791488, 7981616979148800', nodata: '-9999' });
+          const tileUrl = buildRasterTileUrl(collection, itemId, { assets: 'cog_default', colormap: 'viridis', rescale: '10, 50', nodata: '-9999' });
           return new TileLayer({
             id: getLayerId('raster', `${datasetId}-${index}-${itemId}`),
             data: tileUrl,
@@ -182,7 +183,6 @@ export function DeckGlLayerManager({
                 modelMatrix: new Matrix4().translate([0, 0, zOffset])
               });
             },
-            
             onClick: (info) => {
               if (onStationClick) {
                 onStationClick({

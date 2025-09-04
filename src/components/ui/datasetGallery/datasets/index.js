@@ -13,6 +13,13 @@ export const galleryData = {
       type: 'netcdf-2d',
       thumbnailUrl: '/path/to/thumbnail3.jpg',
       description: 'TROPESS reanalysis NOx emissions'
+    },
+      {
+      id: 'JPL-o3-hourly-v1',
+      name: 'JPL GEOS Chem',
+      type: 'raster',
+      thumbnailUrl: '/path/to/thumbnail3.jpg',
+      description: 'JPL GEOS Chem'
     }
   ],
   'insitu': [
