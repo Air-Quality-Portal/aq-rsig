@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { IconLayer } from '@deck.gl/layers';
 import { Tile3DLayer, TileLayer } from '@deck.gl/geo-layers';
 import { BitmapLayer } from '@deck.gl/layers';
-import {GeoJsonLayer, ArcLayer} from '@deck.gl/layers';
+import { GeoJsonLayer, ArcLayer } from '@deck.gl/layers';
 import { Matrix4 } from '@math.gl/core';
 import { useMapbox } from '../../../context/mapContext';
 import {
@@ -11,7 +11,7 @@ import {
   calculateGeoJSONBounds,
   zoomToBounds,
   buildRasterTileUrl,
-  buildNetCDF2DTileUrl
+  buildNetCDF2DTileUrl,
 } from './utils';
 
 function handleStationClick(clickedFeature, onStationClick) {
@@ -32,18 +32,18 @@ export function DeckGlLayerManager({
   const [managedLayers, setManagedLayers] = useState({});
   const mapContext = useMapbox();
   const deckOverlay = mapContext?.deckOverlay;
-  
-  updateActiveLayers(managedLayers)
-  
+
+  updateActiveLayers(managedLayers);
+
   useEffect(() => {
     window.Tile3DLayer = Tile3DLayer;
     window.GeoJsonLayer = GeoJsonLayer;
     window.ArcLayer = ArcLayer;
   }, []);
-  
+
   useEffect(() => {
     const allLayers = Object.values(managedLayers).flat();
-    
+
     if (deckOverlay) {
       deckOverlay.setProps({ layers: allLayers });
     }
@@ -51,12 +51,12 @@ export function DeckGlLayerManager({
       onLayersUpdate(allLayers);
     }
   }, [managedLayers, deckOverlay, onLayersUpdate]);
-  
+
   useEffect(() => {
     if (!datasetId) return;
-    
+
     if (!layerData) {
-      setManagedLayers(prevManaged => {
+      setManagedLayers((prevManaged) => {
         if (prevManaged.hasOwnProperty(datasetId)) {
           const { [datasetId]: _, ...rest } = prevManaged;
           console.log(`Clearing all layers for dataset: ${datasetId}`);
@@ -66,9 +66,13 @@ export function DeckGlLayerManager({
       });
       return;
     }
-    const currentLayerInfo = layerOpacityList.find(layer => layer.id === datasetId);
-    const dynamicOpacity = currentLayerInfo ? (currentLayerInfo.opacity / 100) : 1.0;
-    
+    const currentLayerInfo = layerOpacityList.find(
+      (layer) => layer.id === datasetId
+    );
+    const dynamicOpacity = currentLayerInfo
+      ? currentLayerInfo.opacity / 100
+      : 1.0;
+
     let newLayers = [];
     switch (galleryType) {
       //CALIPSO
@@ -81,80 +85,214 @@ export function DeckGlLayerManager({
           pointSize: 2,
           opacity: dynamicOpacity,
           _subLayerProps: {
-            'points': { pointSize: 0.2, getColor: (d) => d.color || [0, 255, 0, 255], material: false, radiusPixels: 15, billboard: false, sizeScale: 1, sizeMinPixels: 8, sizeMaxPixels: 30, opacity:dynamicOpacity },
-            'mesh': { getColor: [0, 255, 0, 255], material: false, wireframe: false, opacity:dynamicOpacity }
+            points: {
+              pointSize: 0.2,
+              getColor: (d) => d.color || [0, 255, 0, 255],
+              material: false,
+              radiusPixels: 15,
+              billboard: false,
+              sizeScale: 1,
+              sizeMinPixels: 8,
+              sizeMaxPixels: 30,
+              opacity: dynamicOpacity,
+            },
+            mesh: {
+              getColor: [0, 255, 0, 255],
+              material: false,
+              wireframe: false,
+              opacity: dynamicOpacity,
+            },
           },
-          loadOptions: { '3d-tiles': { pointCloudColoration: { mode: 'RGB' } } },
+          loadOptions: {
+            '3d-tiles': { pointCloudColoration: { mode: 'RGB' } },
+          },
           getPointColor: [0, 255, 0, 255],
-          onClick: (info) => { if (info.object && onStationClick) onStationClick(info.object); },
+          onClick: (info) => {
+            if (info.object && onStationClick) onStationClick(info.object);
+          },
           onTilesetLoad: (tileset) => {
-              const bounds = layerData.asset.ept.bounds;
-            console.log("Point cloud bounds::::", bounds);
+            const bounds = layerData.asset.ept.bounds;
+            console.log('Point cloud bounds::::', bounds);
             const [minX, minY, minZ, maxX, maxY, maxZ] = bounds;
             const centerX = (minX + maxX) / 2;
             const centerY = (minY + maxY) / 2;
-            const centerLng = (centerX / 20037508.34) * 180; 
-      
-            const centerLat = (180 / Math.PI) * (2 * Math.atan(Math.exp(centerY / 6378137.0)) - Math.PI / 2);
-            console.log(centerLng, centerLat)
+            const centerLng = (centerX / 20037508.34) * 180;
+
+            const centerLat =
+              (180 / Math.PI) *
+              (2 * Math.atan(Math.exp(centerY / 6378137.0)) - Math.PI / 2);
+            console.log(centerLng, centerLat);
             if (mapContext?.map) {
               mapContext.map.flyTo({
-                center: [centerLng, centerLat], 
+                center: [centerLng, centerLat],
                 zoom: 8,
                 pitch: 60,
                 bearing: 0,
                 duration: 2000,
               });
             }
-          }
+          },
         });
         newLayers.push(pointCloudLayer);
         break;
       }
       //OMI
+      // case 'raster': {
+      //   const bounds = calculateGeoJSONBounds(layerData.features);
+      //   console.log('Layer Data Features:', layerData.features);
+      //   const rasterLayers = layerData.features
+      //     .slice(0, 1)
+      //     .map((feature, index) => {
+      //       const { collection, id: itemId, properties } = feature;
+      //       // const tileUrl = buildRasterTileUrl(collection, itemId, { assets: 'cog_default', colormap: 'plasma', rescale: '19816169791488, 7981616979148800', nodata: '-9999' });
+      //       const tileUrl = buildRasterTileUrl(collection, itemId, {
+      //         assets: 'cog_default',
+      //         colormap: 'viridis',
+      //         rescale: '10, 50',
+      //         nodata: '-9999',
+      //       });
+      //       return new TileLayer({
+      //         id: getLayerId('raster', `${datasetId}-${index}-${itemId}`),
+      //         data: tileUrl,
+      //         minZoom: 0,
+      //         maxZoom: 19,
+      //         tileSize: 256,
+      //         visible: visible,
+      //         pickable: true,
+      //         opacity: dynamicOpacity,
+      //         renderSubLayers: (props) => {
+      //           const {
+      //             bbox: { west, south, east, north },
+      //           } = props.tile;
+      //           return new BitmapLayer({
+      //             ...props,
+      //             data: null,
+      //             image: props.data,
+      //             bounds: [west, south, east, north],
+      //             modelMatrix: new Matrix4().translate([0, 0, 0]),
+      //           });
+      //         },
+      //         onClick: (info) => {
+      //           if (onStationClick)
+      //             onStationClick({
+      //               type: 'raster',
+      //               feature,
+      //               tile: info.tile,
+      //               coordinate: info.coordinate,
+      //               datetime: properties?.datetime,
+      //             });
+      //         },
+      //       });
+      //     });
+      //   newLayers.push(...rasterLayers);
+      //   if (bounds && mapContext?.map) {
+      //     setTimeout(() => {
+      //       mapContext.map.flyTo({
+      //         center: [-98.5795, 39.8283],
+      //         zoom: 2,
+      //         pitch: 0,
+      //         bearing: 0,
+      //         duration: 2000,
+      //       });
+      //     }, 500);
+      //   }
+      //   break;
+      // }
       case 'raster': {
         const bounds = calculateGeoJSONBounds(layerData.features);
-        const rasterLayers = layerData.features.slice(0, 1).map((feature, index) => {
+        const feature =
+          Array.isArray(layerData.features) && layerData.features.length > 0
+            ? layerData.features[0]
+            : null;
+        let rasterLayers = [];
+        if (feature) {
           const { collection, id: itemId, properties } = feature;
-          // const tileUrl = buildRasterTileUrl(collection, itemId, { assets: 'cog_default', colormap: 'plasma', rescale: '19816169791488, 7981616979148800', nodata: '-9999' });
-          const tileUrl = buildRasterTileUrl(collection, itemId, { assets: 'cog_default', colormap: 'viridis', rescale: '10, 50', nodata: '-9999' });
-          return new TileLayer({
-            id: getLayerId('raster', `${datasetId}-${index}-${itemId}`),
-            data: tileUrl,
-            minZoom: 0, maxZoom: 19, tileSize: 256, visible: visible, pickable: true,
-            opacity: dynamicOpacity,
-            renderSubLayers: props => {
-              const { bbox: { west, south, east, north } } = props.tile;
-              return new BitmapLayer({ ...props, data: null, image: props.data, bounds: [west, south, east, north], modelMatrix: new Matrix4().translate([0, 0, 0])});
-            },
-            onClick: (info) => { if (onStationClick) onStationClick({ type: 'raster', feature, tile: info.tile, coordinate: info.coordinate, datetime: properties?.datetime }); }
+          const tileUrl = buildRasterTileUrl(collection, itemId, {
+            assets: 'cog_default',
+            colormap: 'viridis',
+            rescale: '10, 50',
+            nodata: '-9999',
           });
-        });
+          const rasterLayer = new TileLayer({
+            id: getLayerId('raster', `${datasetId}-${itemId}`),
+            data: tileUrl,
+            minZoom: 0,
+            maxZoom: 19,
+            tileSize: 256,
+            visible: visible,
+            pickable: true,
+            opacity: dynamicOpacity,
+            renderSubLayers: (props) => {
+              const {
+                bbox: { west, south, east, north },
+              } = props.tile;
+              return new BitmapLayer({
+                ...props,
+                data: null,
+                image: props.data,
+                bounds: [west, south, east, north],
+                modelMatrix: new Matrix4().translate([0, 0, 0]),
+              });
+            },
+            onClick: (info) => {
+              if (onStationClick)
+                onStationClick({
+                  type: 'raster',
+                  feature,
+                  tile: info.tile,
+                  coordinate: info.coordinate,
+                  datetime: properties?.datetime || properties?.start_datetime,
+                });
+            },
+            onTileLoad: () => {
+              console.log(
+                'Tile loaded for datetime:',
+                properties?.start_datetime ||
+                  properties?.datetime ||
+                  '(no datetime)'
+              );
+            },
+          });
+          rasterLayers.push(rasterLayer);
+        }
         newLayers.push(...rasterLayers);
         if (bounds && mapContext?.map) {
           setTimeout(() => {
-            mapContext.map.flyTo({ center: [-98.5795, 39.8283], zoom: 2, pitch: 0, bearing: 0, duration: 2000 });
+            mapContext.map.flyTo({
+              center: [-98.5795, 39.8283],
+              zoom: 2,
+              pitch: 0,
+              bearing: 0,
+              duration: 2000,
+            });
           }, 500);
         }
         break;
       }
+
       //TROPESS
       case 'netcdf-2d': {
         const { conceptId, datetime, variable, bounds, ...rest } = layerData;
-        const varValues = {'lev':[500,1000]};
-        
+        const varValues = { lev: [500, 1000] };
+
         if (!conceptId || !datetime || !variable) {
           newLayers = [];
           break;
         }
-        const tileUrls = buildNetCDF2DTileUrl(conceptId, datetime, variable, varValues, rest);
+        const tileUrls = buildNetCDF2DTileUrl(
+          conceptId,
+          datetime,
+          variable,
+          varValues,
+          rest
+        );
         const levValues = varValues?.lev || [];
-        
+
         tileUrls.forEach((tileUrl, index) => {
           const lev = levValues[index];
-          
+
           if (lev === undefined) return;
-          
+
           const zOffset = lev * 1000;
           const BOUNDS = [-125.0, 24.5, -66.5, 49.5];
           const netcdfLayer = new TileLayer({
@@ -166,11 +304,15 @@ export function DeckGlLayerManager({
             visible: visible,
             pickable: true,
             opacity: dynamicOpacity,
-            renderSubLayers: props => {
-              const { bbox: { west, south, east, north } } = props.tile;
+            renderSubLayers: (props) => {
+              const {
+                bbox: { west, south, east, north },
+              } = props.tile;
               if (
-                east < BOUNDS[0] || west > BOUNDS[2] ||
-                north < BOUNDS[1] || south > BOUNDS[3]
+                east < BOUNDS[0] ||
+                west > BOUNDS[2] ||
+                north < BOUNDS[1] ||
+                south > BOUNDS[3]
               ) {
                 return null;
               }
@@ -180,7 +322,7 @@ export function DeckGlLayerManager({
                 data: null,
                 image: props.data,
                 bounds: [west, south, east, north],
-                modelMatrix: new Matrix4().translate([0, 0, zOffset])
+                modelMatrix: new Matrix4().translate([0, 0, zOffset]),
               });
             },
             onClick: (info) => {
@@ -193,19 +335,27 @@ export function DeckGlLayerManager({
                   lev: lev,
                   tile: info.tile,
                   coordinate: info.coordinate,
-                  layerData
+                  layerData,
                 });
               }
             },
-            onTileLoad: (tile) => console.log(`NetCDF tile loaded for lev=${lev}:`, tile),
-            onTileError: (error) => console.error(`NetCDF tile load error for lev=${lev}:`, error)
+            onTileLoad: (tile) =>
+              console.log(`NetCDF tile loaded for lev=${lev}:`, tile),
+            onTileError: (error) =>
+              console.error(`NetCDF tile load error for lev=${lev}:`, error),
           });
-          
+
           newLayers.push(netcdfLayer);
         });
         if (mapContext?.map) {
           setTimeout(() => {
-            mapContext.map.flyTo({ center: [-98.5795, 39.8283], zoom: 2, pitch: 0, bearing: 0, duration: 2000 });
+            mapContext.map.flyTo({
+              center: [-98.5795, 39.8283],
+              zoom: 2,
+              pitch: 0,
+              bearing: 0,
+              duration: 2000,
+            });
           }, 500);
         }
         break;
@@ -215,28 +365,79 @@ export function DeckGlLayerManager({
         const geojsonData = layerData;
         const stationBounds = calculateGeoJSONBounds(layerData.features);
         const iconSvg = `<svg fill="#2496ED" width="30px" height="30px" viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#000000" stroke-width="10.24"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g><g id="SVGRepo_iconCarrier"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g></svg>`;
-        const svgToDataURL = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-        const iconData = geojsonData.features.map(feature => ({ ...feature.properties, coordinates: feature.geometry.coordinates, position: feature.geometry.coordinates, feature: feature }));
+        const svgToDataURL = (svg) =>
+          `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        const iconData = geojsonData.features.map((feature) => ({
+          ...feature.properties,
+          coordinates: feature.geometry.coordinates,
+          position: feature.geometry.coordinates,
+          feature: feature,
+        }));
         const stationLayer = new IconLayer({
           id: getLayerId('station', datasetId),
           data: iconData,
-          pickable: true, visible: visible,
+          pickable: true,
+          visible: visible,
           opacity: dynamicOpacity,
-          getIcon: d => ({ url: svgToDataURL(iconSvg), width: 30, height: 30, anchorY: 30, anchorX: 15 }),
-          getPosition: d => d.position,
-          getSize: 24, sizeScale: 1, sizeMinPixels: 16, sizeMaxPixels: 32,
-          autoHighlight: true, highlightColor: [255, 255, 255, 100],
-          onClick: (info) => { if (info.object && onStationClick) handleStationClick(info.object.feature || info.object, onStationClick); },
-          getTooltip: ({object}) => object && { html: `<div><strong>Station:</strong> ${object.name || object.id || 'Unknown'}</div>`, style: { backgroundColor: '#f8f8f8', fontSize: '0.8em', color: '#333' } }
+          getIcon: (d) => ({
+            url: svgToDataURL(iconSvg),
+            width: 30,
+            height: 30,
+            anchorY: 30,
+            anchorX: 15,
+          }),
+          getPosition: (d) => d.position,
+          getSize: 24,
+          sizeScale: 1,
+          sizeMinPixels: 16,
+          sizeMaxPixels: 32,
+          autoHighlight: true,
+          highlightColor: [255, 255, 255, 100],
+          onClick: (info) => {
+            if (info.object && onStationClick)
+              handleStationClick(
+                info.object.feature || info.object,
+                onStationClick
+              );
+          },
+          getTooltip: ({ object }) =>
+            object && {
+              html: `<div><strong>Station:</strong> ${object.name || object.id || 'Unknown'}</div>`,
+              style: {
+                backgroundColor: '#f8f8f8',
+                fontSize: '0.8em',
+                color: '#333',
+              },
+            },
         });
         newLayers.push(stationLayer);
-        if (stationBounds && mapContext?.map && stationBounds.minLng !== Infinity && stationBounds.maxLng !== -Infinity) {
+        if (
+          stationBounds &&
+          mapContext?.map &&
+          stationBounds.minLng !== Infinity &&
+          stationBounds.maxLng !== -Infinity
+        ) {
           setTimeout(() => {
             if (geojsonData.features.length === 1) {
               const coords = geojsonData.features[0].geometry.coordinates;
-              if (coords && coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) mapContext.map.flyTo({ center: coords, zoom: 12, duration: 2000 });
+              if (
+                coords &&
+                coords.length === 2 &&
+                !isNaN(coords[0]) &&
+                !isNaN(coords[1])
+              )
+                mapContext.map.flyTo({
+                  center: coords,
+                  zoom: 12,
+                  duration: 2000,
+                });
             } else {
-              zoomToBounds(mapContext.map, stationBounds, { padding: 50, maxZoom: 15, pitch: 0, bearing: 0 });
+              zoomToBounds(mapContext.map, stationBounds, {
+                padding: 50,
+                maxZoom: 15,
+                pitch: 0,
+                bearing: 0,
+              });
             }
           }, 500);
         }
@@ -247,56 +448,59 @@ export function DeckGlLayerManager({
         break;
       }
     }
-    setManagedLayers(prevManaged => {
+    setManagedLayers((prevManaged) => {
       return {
         ...prevManaged,
         [datasetId]: newLayers,
       };
     });
   }, [
-    layerData, activeLayerUrl, galleryType, datasetId, visible,
-    onStationClick, mapContext, layerOpacityList
+    layerData,
+    activeLayerUrl,
+    galleryType,
+    datasetId,
+    visible,
+    onStationClick,
+    mapContext,
+    layerOpacityList,
   ]);
-  
+
   useEffect(() => {
     // Only update opacity for layers whose opacity value has changed
-    setManagedLayers(prevManagedLayers => {
+    setManagedLayers((prevManagedLayers) => {
       const updatedManaged = { ...prevManagedLayers };
-      
+
       for (const layerOpacityEntry of layerOpacityList) {
         const { id: datasetId, opacity: newOpacityValue } = layerOpacityEntry;
         const newOpacity = newOpacityValue / 100;
-        
+
         if (!updatedManaged[datasetId]) continue;
-        
+
         const existingLayers = updatedManaged[datasetId];
-        
+
         // Clone each layer with new opacity
-        updatedManaged[datasetId] = existingLayers.map(layer => {
+        updatedManaged[datasetId] = existingLayers.map((layer) => {
           if (layer.props.opacity === newOpacity) return layer;
-          
+
           // Top-level layer opacity
           const originalRender = layer.props.renderSubLayers;
-          
+
           const cloned = layer.clone({
             opacity: newOpacity,
             ...(originalRender && {
-              renderSubLayers: props => {
+              renderSubLayers: (props) => {
                 const sub = originalRender(props);
-                return sub?.clone
-                ? sub.clone({ opacity: newOpacity })
-                : sub;
-              }
-            })
+                return sub?.clone ? sub.clone({ opacity: newOpacity }) : sub;
+              },
+            }),
           });
-          
+
           return cloned;
-          
         });
       }
       return updatedManaged;
     });
   }, [layerOpacityList]);
-  
+
   return null;
 }
