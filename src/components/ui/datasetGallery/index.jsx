@@ -198,6 +198,7 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
                           rel="noopener noreferrer"
                           underline="hover"
                           sx={{ fontSize: '0.75rem', color: 'primary.main' }}
+                          onClick={(event) => event.stopPropagation()}
                         >
                           See more
                         </Link>
