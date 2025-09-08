@@ -1,91 +1,73 @@
 import { useEffect } from 'react';
 import { useChart } from '../../context/chartContext';
 
-export const LineChart = ({ data, labels, legend, labelX, labelY, color="#ff6384", index=0, separateY=true }) => {
-  // data should be an array of vector points
-  // labels should be an array of the vector labels
+export const LineChart = ({ datasets = [] }) => {
   const { chart } = useChart();
+  const lineColors = ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56'];
+
+  console.log('Rendering LineChart with datasets:', datasets);
 
   useEffect(() => {
-    if (!chart || !data.length || !labels.length) return;
+    if (!chart) return;
 
-    // first reset the zoom
-    chart.resetZoom();
-    chart.options.plugins.tooltip.enabled = true;
-
-    const newDataset = {
-      label: legend,
-      data: data,
-      backgroundColor: color + '20',
-      borderColor: color,
-      showLine: true,
-      xAxisID: `x-${index}`,
-    };
-    if (separateY) {
-      newDataset.yAxisID = `y-${index}`;
-    }
-
-    // Ensure datasets array exists
-    if (!chart.data.datasets) {
+    if (datasets.length === 0) {
+      chart.data.labels = [];
       chart.data.datasets = [];
+      chart.update();
+      return;
     }
 
-    // Add dataset at the specified index
-    chart.data.datasets[index] = newDataset;
-
-    // Update the labels
-    chart.data.labels = labels;
-
-    // update the axis labels
-    chart.options.scales.y.display = separateY?false:true;
-    chart.options.scales.x.display = false;
-
-    // Ensure scales object exists
-    if (!chart.options.scales) {
-      chart.options.scales = {};
-    }
-
-    // Add scale configurations for x and y axes
-    chart.options.scales[`x-${index}`] = {
-      type: 'category',
-      labels: labels,
-      display: true,
-      grid: {
-        display: false,
-        drawOnChartArea: false,
-        // color: color,
+    const chartJsDatasets = datasets.slice(0, 2).map((dataset, index) => ({
+      label: dataset.parameterName,
+      data: dataset.data,
+      borderColor: lineColors[index % lineColors.length],
+      backgroundColor: `${lineColors[index % lineColors.length]}20`,
+      yAxisID: index === 0 ? 'yLeft' : 'yRight',
+    }));
+    
+    const chartJsScales = {
+      x: {
+        display: true,
+        title: {
+          display: true,
+          text: 'Date'
+        }
       },
-      ticks: {
-        labels,
-      },
-      title: {
-        text: labelX,
-        display: !!labelX,
-        // color: color
+      yLeft: {
+        type: 'linear',
+        display: true,
+        position: 'left',
+        title: {
+          display: true,
+          text: datasets[0]?.units || 'Primary Axis',
+        }
       }
     };
 
-    chart.options.scales[`y-${index}`] = {
-      display: separateY?true:false,
-      grid: {
-        display: false,
-        drawOnChartArea: false,
-        // color: color,
-      },
-      ticks: {
-        // color: color,
-      },
-      title: {
-        text: labelY,
-        display: !!labelY,
-        // color: color
-      }
-    };
-
-    // update the chart
+    if (datasets.length > 1) {
+      chartJsScales.yRight = {
+        type: 'linear',
+        display: true,
+        position: 'right',
+        title: {
+          display: true,
+          text: datasets[1]?.units || 'Secondary Axis',
+        },
+        grid: {
+          drawOnChartArea: false,
+        },
+      };
+    }
+    
+    chart.data.labels = datasets[0].labels;
+    chart.data.datasets = chartJsDatasets;
+    chart.options.scales = chartJsScales;
+    chart.options.interaction.mode = 'index';
+    chart.options.interaction.intersect = false;
+    
     chart.update();
 
-  }, [chart, data, labels, legend, labelX, labelY, color, index]);
+  }, [chart, datasets]);
 
   return null;
 };

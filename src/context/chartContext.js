@@ -20,8 +20,8 @@ export const ChartProvider = ({ children }) => {
           label: [],
           data: [],
           showLine: false,
-        }
-      ]
+        },
+      ],
     };
 
     const config = {
@@ -29,11 +29,11 @@ export const ChartProvider = ({ children }) => {
       data: dataset,
       options: options,
       plugins: [plugin],
-    }
+    };
 
     let chart_instance = new Chart(chartContainer.current, config);
 
-    setChart(chart_instance)
+    setChart(chart_instance);
 
     // Clean up charts on unmount
     return () => {
@@ -44,7 +44,10 @@ export const ChartProvider = ({ children }) => {
   return (
     <ChartContext.Provider value={{ chart: chart }}>
       {children}
-      <canvas ref={chartContainer} style={{ width: '100%', minHeight: '30%', position: 'absolute' }}></canvas>
+      <canvas
+        ref={chartContainer}
+        style={{ width: '100%', minHeight: '30%', position: 'absolute' }}
+      ></canvas>
     </ChartContext.Provider>
   );
 };
