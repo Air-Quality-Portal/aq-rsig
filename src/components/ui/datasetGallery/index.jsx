@@ -6,7 +6,9 @@ import {
   Box,
   CircularProgress,
   Alert,
-  Chip
+  Chip,
+  Link,
+  Tooltip
 } from '@mui/material';
 
 import { fetchDatasetData } from '../../../utils/urlBuilder'; 
@@ -81,36 +83,6 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
     }
   };
 
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case 'raster':
-        return '🛰️';
-      case 'stations':
-        return '📍';
-      case 'point-cloud':
-        return '☁️';
-      case 'feature':
-         return '📊';
-      case 'geojson':
-        return '🗺️';
-      default:
-        return '📝';
-    }
-  };
-
-  const getCategoryColor = (category) => {
-    switch (category) {
-      case 'satellite':
-        return '#e3f2fd';
-      case 'insitu':
-        return '#f3e5f5';
-      case 'lidar':
-        return '#e8f5e8';
-      default:
-        return '#fafafa';
-    }
-  };
-
   return (
     <Box sx={{ width: '100%', height: '100%', p: 2, overflowY: 'auto' }}>
       {error && (
@@ -126,8 +98,8 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
       <Grid container spacing={2}>
         {allDatasets.map((dataset) => (
           <Grid item xs={12} sm={6} key={dataset.id}>
-            <Card 
-              sx={{ 
+            <Card
+              sx={{
                 cursor: 'pointer',
                 transition: 'all 0.2s ease-in-out',
                 '&:hover': {
@@ -138,10 +110,12 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
                 opacity: loadingDataset === dataset.id ? 0.7 : 1,
                 border: '1px solid',
                 borderColor: 'divider',
-                minWidth:'18rem'
+                minWidth: '18rem',
+                borderRadius: 2,
               }}
               onClick={() => handleDatasetClick(dataset)}
             >
+              {/* Loading Overlay */}
               {loadingDataset === dataset.id && (
                 <Box
                   sx={{
@@ -155,60 +129,84 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
                     justifyContent: 'center',
                     backgroundColor: 'rgba(255, 255, 255, 0.9)',
                     zIndex: 2,
-                    borderRadius: 1
+                    borderRadius: 2,
                   }}
                 >
                   <CircularProgress size={32} />
                 </Box>
               )}
-              
-              <Box sx={{display: 'flex', alignItems: 'center', p: 1.5}}>
-                 <Box sx={{
-                    height: 50,
-                    width: 50,
-                    minWidth: 50,
-                    backgroundColor: getCategoryColor(dataset.category),
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.5rem',
-                    borderRadius: 1,
-                    mr: 1.5
-                  }}>
-                    {getTypeIcon(dataset.type)}
-                </Box>
-                
-                <Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                        <Typography 
-                            variant="subtitle1" 
-                            component="h3" 
-                            sx={{ 
-                            fontWeight: 600,
-                            lineHeight: 1.3
-                            }}
+
+              {/* Main Content with Hover Tooltip */}
+              <Tooltip
+                title={dataset.description || ''}
+                placement="left"
+                componentsProps={{
+                  tooltip: {
+                    sx: {
+                      bgcolor: 'rgba(50, 25, 255, 0.6)',
+                      color: 'white',
+                      boxShadow: 3,
+                      fontSize: '0.75rem',
+                      maxWidth: 300,
+                      borderRadius: 2,
+                      p: 1
+                    },
+                  },
+                }}
+              >
+
+                <Box sx={{ p: 1.5 }}>
+                  
+                  {/* Top Row: Title + Category Chip */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                    <Typography
+                      variant="subtitle1"
+                      component="h3"
+                      sx={{ fontWeight: 600, fontSize: '1rem', lineHeight: 1.2, flexGrow: 1 }}
+                    >
+                      {dataset.name}
+                    </Typography>
+
+                    <Chip
+                      label={dataset.category}
+                      size="small"
+                      color={getTypeColor(dataset.type)}
+                      sx={{ height: 22, fontSize: '0.7rem' }}
+                    />
+                  </Box>
+
+                  {/* Metadata List */}
+                  <Box
+                    component="ul"
+                    sx={{
+                      pl: 2,
+                      mb: 0,
+                      fontSize: '0.75rem',
+                      color: 'text.secondary',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {dataset.units && <li><strong>Unit:</strong> {dataset.units}</li>}
+                    {dataset.start_date && <li><strong>Start Date:</strong> {dataset.start_date}</li>}
+                    {dataset.end_date && <li><strong>End Date:</strong> {dataset.end_date}</li>}
+                    {dataset.time_interval && <li><strong>Time Interval:</strong> {dataset.time_interval}</li>}
+                    {dataset.info && (
+                      <li>
+                        <Link
+                          href={dataset.info}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          underline="hover"
+                          sx={{ fontSize: '0.75rem', color: 'primary.main' }}
                         >
-                            {dataset.name}
-                        </Typography>
-                        <Chip 
-                            label={dataset.category}
-                            size="small"
-                            color={getTypeColor(dataset.type)}
-                            sx={{ ml: 1, height: 20, fontSize: '0.6875rem' }}
-                        />
-                    </Box>
-                    <Typography 
-                        variant="body2" 
-                        color="text.secondary"
-                        sx={{ 
-                          fontSize: '0.8rem',
-                          lineHeight: 1.2,
-                        }}
-                      >
-                        {dataset.description}
-                      </Typography>
+                          See more
+                        </Link>
+                      </li>
+                    )}
+                  </Box>
+
                 </Box>
-              </Box>
+              </Tooltip>
             </Card>
           </Grid>
         ))}

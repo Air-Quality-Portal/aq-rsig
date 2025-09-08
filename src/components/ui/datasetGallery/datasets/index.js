@@ -2,7 +2,7 @@ export const galleryData = {
   'satellite': [
     {
       id: 'omi-no2-2d',
-      name: 'OMI-2D',
+      name: 'OMI Tropospheric NO₂ Column Data',
       thumbnailUrl: '/path/to/thumbnail1.jpg',
       type: 'raster',
       description:
@@ -17,7 +17,7 @@ export const galleryData = {
     },
     {
       id: 'TROPESS_reanalysis_mon_emi_nox_anth',
-      name: 'TROPESS Chemical Reanalysis Surface Anthropogenic NOx emissions Monthly 2-dimensional Product V1',
+      name: 'TROPESS Surface NOx Emissions',
       type: 'netcdf-2d',
       thumbnailUrl: '/path/to/thumbnail3.jpg',
       description: "The TROPESS Chemical Reanalysis Surface Total NOx emissions Monthly 2-dimensional Product contains nitrogen oxides (NO and NO2) emissions from the total of all sources. The data are part of the Tropospheric Chemical Reanalysis v2 (TCR-2) for the period 2005-2021. TCR-2 uses JPL's Multi-mOdel Multi-cOnstituent Chemical (MOMO-Chem) data assimilation framework that simultaneously optimizes both concentrations and emissions of multiple species from multiple satellite sensors. The data files are written in the netCDF version 4 file format, and each file contains a year of data at monthly resolution, and a spatial resolution of 1.125 x 1.125 degrees. The principal investigator for the TCR-2 data is Miyazaki, Kazuyuki.",
@@ -31,7 +31,7 @@ export const galleryData = {
     },
     {
       id: 'JPL-o3-hourly-v1',
-      name: 'JPL GEOS Chem',
+      name: 'JPL GEOS Chem O3',
       type: 'raster',
       thumbnailUrl: '/path/to/thumbnail3.jpg',
       description: "This dataset provides hourly atmospheric composition data simulated using the GEOS-Chem model, developed by NASA's Jet Propulsion Laboratory (JPL). It offers insights into various atmospheric constituents, including ozone (O₃), carbon monoxide (CO), nitrogen dioxide (NO₂), sulfur dioxide (SO₂), and fine particulate matter (PM₂.₅).",
