@@ -28,7 +28,22 @@ export const galleryData = {
       time_interval: 'monthly',
       start_date: '2005-01-01T00:00:00+00:00',
       end_date: '2021-12-31T00:00:00+00:00'
+    },
+    {
+      id: 'JPL-o3-hourly-v1',
+      name: 'JPL GEOS Chem',
+      type: 'raster',
+      thumbnailUrl: '/path/to/thumbnail3.jpg',
+      description: "This dataset provides hourly atmospheric composition data simulated using the GEOS-Chem model, developed by NASA's Jet Propulsion Laboratory (JPL). It offers insights into various atmospheric constituents, including ozone (O₃), carbon monoxide (CO), nitrogen dioxide (NO₂), sulfur dioxide (SO₂), and fine particulate matter (PM₂.₅).",
+      units: 'molecules/cm²',
+      colormap: 'rdbu_r',
+      rescale_values : [0, 80],
+      info: 'https://geoschem.github.io/index.html',
+      time_interval: 'hourly',
+      start_date: '2020-07-19 14:00:00+00',
+      end_date: '2020-07-31 23:59:59+00'
     }
+
   ],
   'insitu': [
     {
