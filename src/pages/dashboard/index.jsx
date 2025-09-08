@@ -40,6 +40,10 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   const [selectedDatasetId, setSelectedDatasetId] = useState(null);
   const [layerData, setLayerData] = useState(null);
   const [layerDisplayList, setLayerDisplayList] = useState([]);
+  
+  // Spatial subset state
+  const [spatialSubset, setSpatialSubset] = useState(null);
+  
   const {
     selectedStation,
     isLoading,
@@ -214,6 +218,12 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     }
   };
 
+  // Handle spatial subset changes
+  const handleSpatialSubsetChange = (newSpatialSubset) => {
+    console.log('Spatial subset changed:', newSpatialSubset);
+    setSpatialSubset(newSpatialSubset);
+  };
+
   useEffect(() => {
     fetch('/plugins/pointcloud/events.js')
       .then((response) => {
@@ -248,7 +258,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     (dataset) => dataset.type === 'raster'
   );
 
-  // UPDATED: Handle dataset change with layer reordering
+  // Handle dataset change with layer reordering
   const handleDatasetChange = (event) => {
     const newDatasetId = event.target.value;
     setSelectedDatasetId(newDatasetId);
@@ -292,7 +302,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
       // No raster datasets available, clear selection
       setSelectedDatasetId(null);
     }
-  }, [layerDisplayList]); // Changed dependency to layerDisplayList instead of rasterDatasets
+  }, [layerDisplayList]);
 
   // Create dropdown component
   const titleDropdown = (
@@ -349,7 +359,12 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
               <Title title={TITLE} description={DESCRIPTION} />
               <Search vizItems={[]} onSelectedVizItemSearch={console.log('')} />
               <FilterByDate vizItems={[]} onFilteredVizItems={[]} />
-              <SpatialSubsetManager />
+              
+              {/* Pass spatial subset props */}
+              <SpatialSubsetManager 
+                onSpatialSubsetChange={handleSpatialSubsetChange}
+                spatialSubset={spatialSubset}
+              />
 
               <RecordDetailView
                 record={selectedRecord}
@@ -396,6 +411,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
               </div>
             )}
 
+          {/* UPDATED: Pass allActiveDatasets for colormap support */}
           <DeckGlLayerManager
             activeLayerUrl={activeLayerUrl}
             updateActiveLayers={updateActiveLayers}
@@ -418,6 +434,8 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
             onStationClick={handleStationClick}
             visible={true}
             layerOpacityList={layerDisplayList}
+            spatialSubset={spatialSubset}
+            allActiveDatasets={layerDisplayList}
           />
 
           {isVisible && selectedStation && (

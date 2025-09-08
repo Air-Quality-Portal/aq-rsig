@@ -13,6 +13,7 @@
     "@fortawesome/free-regular-svg-icons": "^6.6.0",
     "@fortawesome/free-solid-svg-icons": "^6.6.0",
     "@fortawesome/react-fontawesome": "^0.2.2",
+    "@mapbox/mapbox-gl-draw": "^1.5.0",
     "@math.gl/core": "^4.1.0",
     "@mui/icons-material": "^6.4.12",
     "@mui/material": "^7.1.1",

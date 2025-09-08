@@ -18,6 +18,50 @@ function handleStationClick(clickedFeature, onStationClick) {
   onStationClick(clickedFeature);
 }
 
+// NEW: Utility function to check if a point is within spatial bounds
+const isPointInBounds = (lng, lat, bounds) => {
+  if (!bounds) return true;
+  return (
+    lng >= bounds.west &&
+    lng <= bounds.east &&
+    lat >= bounds.south &&
+    lat <= bounds.north
+  );
+};
+
+// NEW: Utility function to check if a tile intersects with spatial bounds
+const tileIntersectsBounds = (west, south, east, north, bounds) => {
+  if (!bounds) return true;
+  return (
+    west <= bounds.east &&
+    east >= bounds.west &&
+    south <= bounds.north &&
+    north >= bounds.south
+  );
+};
+
+// NEW: Add spatial bounds to URL parameters
+const addSpatialBoundsToUrl = (baseUrl, bounds) => {
+  if (!bounds) return baseUrl;
+  const url = new URL(baseUrl);
+  url.searchParams.set('bbox', `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`);
+  return url.toString();
+};
+
+// NEW: Get dataset metadata for colormap and rescale values
+const getDatasetMetadata = (datasetId, allActiveDatasets) => {
+  const dataset = allActiveDatasets.find(d => d.id === datasetId);
+  return dataset || {};
+};
+
+// NEW: Format rescale values for URL
+const formatRescaleValues = (rescaleValues) => {
+  if (!rescaleValues || !Array.isArray(rescaleValues) || rescaleValues.length !== 2) {
+    return '10, 50'; // Default fallback
+  }
+  return `${rescaleValues[0]}, ${rescaleValues[1]}`;
+};
+
 export function DeckGlLayerManager({
   activeLayerUrl,
   layerData,
@@ -28,6 +72,8 @@ export function DeckGlLayerManager({
   visible = true,
   onLayersUpdate,
   layerOpacityList = [],
+  spatialSubset, // Spatial subset bounds
+  allActiveDatasets = [], // NEW: Add datasets metadata
 }) {
   const [managedLayers, setManagedLayers] = useState({});
   const mapContext = useMapbox();
@@ -41,7 +87,7 @@ export function DeckGlLayerManager({
     window.ArcLayer = ArcLayer;
   }, []);
 
-  // NEW: Function to get layers in the correct order based on layerOpacityList
+  // Function to get layers in the correct order based on layerOpacityList
   const getOrderedLayers = () => {
     const orderedLayers = [];
     
@@ -108,6 +154,11 @@ export function DeckGlLayerManager({
       });
       return;
     }
+
+    // NEW: Get dataset metadata for colormap and rescale values
+    const datasetMetadata = getDatasetMetadata(datasetId, allActiveDatasets);
+    console.log('Dataset metadata:', datasetMetadata);
+
     const currentLayerInfo = layerOpacityList.find(
       (layer) => layer.id === datasetId
     );
@@ -119,9 +170,14 @@ export function DeckGlLayerManager({
     switch (galleryType) {
       //CALIPSO
       case 'point-cloud': {
+        // Add spatial bounds to point cloud URL if available
+        const spatialAwareUrl = spatialSubset 
+          ? addSpatialBoundsToUrl(activeLayerUrl, spatialSubset)
+          : activeLayerUrl;
+
         const pointCloudLayer = new Tile3DLayer({
           id: getLayerId('pointcloud', datasetId),
-          data: activeLayerUrl,
+          data: spatialAwareUrl,
           pickable: true,
           visible: visible,
           pointSize: 2,
@@ -187,12 +243,23 @@ export function DeckGlLayerManager({
         let rasterLayers = [];
         if (feature) {
           const { collection, id: itemId, properties } = feature;
-          const tileUrl = buildRasterTileUrl(collection, itemId, {
+          
+          // NEW: Use dynamic colormap and rescale values from dataset metadata
+          const tileParams = {
             assets: 'cog_default',
-            colormap: 'viridis',
-            rescale: '10, 50',
+            colormap: datasetMetadata.colormap || 'viridis', // Use dataset colormap or fallback
+            rescale: formatRescaleValues(datasetMetadata.rescale_values), // Use dataset rescale values
             nodata: '-9999',
-          });
+          };
+          
+          // Add spatial bounds if available
+          if (spatialSubset) {
+            tileParams.bbox = `${spatialSubset.west},${spatialSubset.south},${spatialSubset.east},${spatialSubset.north}`;
+          }
+
+          console.log('Raster tile params:', tileParams);
+          const tileUrl = buildRasterTileUrl(collection, itemId, tileParams);
+          
           const rasterLayer = new TileLayer({
             id: getLayerId('raster', `${datasetId}-${itemId}`),
             data: tileUrl,
@@ -206,6 +273,12 @@ export function DeckGlLayerManager({
               const {
                 bbox: { west, south, east, north },
               } = props.tile;
+              
+              // Filter tiles based on spatial subset
+              if (spatialSubset && !tileIntersectsBounds(west, south, east, north, spatialSubset)) {
+                return null;
+              }
+              
               return new BitmapLayer({
                 ...props,
                 data: null,
@@ -259,12 +332,27 @@ export function DeckGlLayerManager({
           newLayers = [];
           break;
         }
+        
+        // NEW: Add dataset metadata to netcdf parameters
+        const netcdfParams = {
+          ...rest,
+          // Add colormap and rescale from dataset metadata
+          colormap: datasetMetadata.colormap || 'reds',
+          rescale: formatRescaleValues(datasetMetadata.rescale_values),
+          ...(spatialSubset && { 
+            spatialBounds: spatialSubset,
+            bbox: `${spatialSubset.west},${spatialSubset.south},${spatialSubset.east},${spatialSubset.north}`
+          })
+        };
+
+        console.log('NetCDF params:', netcdfParams);
+        
         const tileUrls = buildNetCDF2DTileUrl(
           conceptId,
           datetime,
           variable,
           varValues,
-          rest
+          netcdfParams
         );
         const levValues = varValues?.lev || [];
 
@@ -280,6 +368,15 @@ export function DeckGlLayerManager({
           // Use small relative z-offset instead of massive absolute offset
           const relativeZOffset = baseZOffset + (index * 10); // Just 10 units between elevation levels
           const BOUNDS = [-125.0, 24.5, -66.5, 49.5];
+          
+          // Use spatial subset bounds if available, otherwise use default bounds
+          const effectiveBounds = spatialSubset || {
+            west: BOUNDS[0],
+            south: BOUNDS[1],
+            east: BOUNDS[2],
+            north: BOUNDS[3]
+          };
+          
           const netcdfLayer = new TileLayer({
             id: `${getLayerId('netcdf-2d', datasetId)}-lev-${lev}`,
             data: tileUrl,
@@ -293,11 +390,13 @@ export function DeckGlLayerManager({
               const {
                 bbox: { west, south, east, north },
               } = props.tile;
+              
+              // Use effective bounds for filtering
               if (
-                east < BOUNDS[0] ||
-                west > BOUNDS[2] ||
-                north < BOUNDS[1] ||
-                south > BOUNDS[3]
+                east < effectiveBounds.west ||
+                west > effectiveBounds.east ||
+                north < effectiveBounds.south ||
+                south > effectiveBounds.north
               ) {
                 return null;
               }
@@ -348,16 +447,31 @@ export function DeckGlLayerManager({
       //AQS
       case 'feature': {
         const geojsonData = layerData;
-        const stationBounds = calculateGeoJSONBounds(layerData.features);
-        const iconSvg = `<svg fill="#2496ED" width="30px" height="30px" viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#000000" stroke-width="10.24"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g><g id="SVGRepo_iconCarrier"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g></svg>`;
+        
+        // Apply spatial filtering to station data
+        let filteredFeatures = geojsonData.features;
+        if (spatialSubset) {
+          filteredFeatures = geojsonData.features.filter(feature => {
+            const [lng, lat] = feature.geometry.coordinates;
+            return isPointInBounds(lng, lat, spatialSubset);
+          });
+          
+          console.log(`Spatial filtering: ${geojsonData.features.length} -> ${filteredFeatures.length} stations`);
+        }
+        
+        const stationBounds = calculateGeoJSONBounds(filteredFeatures);
+        const iconSvg = `<svg fill="#2496ED" width="30px" height="30px" viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#000000" stroke-width="10.24"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g><g id="SVGRepo_iconCarrier"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35-817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g></svg>`;
         const svgToDataURL = (svg) =>
           `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-        const iconData = geojsonData.features.map((feature) => ({
+        
+        // Use filtered features for icon data
+        const iconData = filteredFeatures.map((feature) => ({
           ...feature.properties,
           coordinates: feature.geometry.coordinates,
           position: feature.geometry.coordinates,
           feature: feature,
         }));
+        
         const stationLayer = new IconLayer({
           id: getLayerId('station', datasetId),
           data: iconData,
@@ -396,33 +510,45 @@ export function DeckGlLayerManager({
             },
         });
         newLayers.push(stationLayer);
-        if (
-          stationBounds &&
-          mapContext?.map &&
-          stationBounds.minLng !== Infinity &&
-          stationBounds.maxLng !== -Infinity
-        ) {
+        
+        // Zoom to filtered stations or spatial subset
+        if (mapContext?.map) {
           setTimeout(() => {
-            if (geojsonData.features.length === 1) {
-              const coords = geojsonData.features[0].geometry.coordinates;
-              if (
-                coords &&
-                coords.length === 2 &&
-                !isNaN(coords[0]) &&
-                !isNaN(coords[1])
-              )
-                mapContext.map.flyTo({
-                  center: coords,
-                  zoom: 12,
-                  duration: 2000,
-                });
-            } else {
-              zoomToBounds(mapContext.map, stationBounds, {
+            if (spatialSubset) {
+              // Zoom to spatial subset bounds
+              mapContext.map.fitBounds([
+                [spatialSubset.west, spatialSubset.south],
+                [spatialSubset.east, spatialSubset.north]
+              ], {
                 padding: 50,
-                maxZoom: 15,
-                pitch: 0,
-                bearing: 0,
+                duration: 2000,
               });
+            } else if (
+              stationBounds &&
+              stationBounds.minLng !== Infinity &&
+              stationBounds.maxLng !== -Infinity
+            ) {
+              if (filteredFeatures.length === 1) {
+                const coords = filteredFeatures[0].geometry.coordinates;
+                if (
+                  coords &&
+                  coords.length === 2 &&
+                  !isNaN(coords[0]) &&
+                  !isNaN(coords[1])
+                )
+                  mapContext.map.flyTo({
+                    center: coords,
+                    zoom: 12,
+                    duration: 2000,
+                  });
+              } else {
+                zoomToBounds(mapContext.map, stationBounds, {
+                  padding: 50,
+                  maxZoom: 15,
+                  pitch: 0,
+                  bearing: 0,
+                });
+              }
             }
           }, 500);
         }
@@ -448,6 +574,8 @@ export function DeckGlLayerManager({
     onStationClick,
     mapContext,
     layerOpacityList,
+    spatialSubset,
+    allActiveDatasets,
   ]);
 
   useEffect(() => {
