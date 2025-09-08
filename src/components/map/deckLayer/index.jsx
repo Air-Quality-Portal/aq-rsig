@@ -41,8 +41,50 @@ export function DeckGlLayerManager({
     window.ArcLayer = ArcLayer;
   }, []);
 
+  // NEW: Function to get layers in the correct order based on layerOpacityList
+  const getOrderedLayers = () => {
+    const orderedLayers = [];
+    
+    // Process layers in the order they appear in layerOpacityList
+    // Items later in the array will render on top
+    layerOpacityList.forEach(layerConfig => {
+      const layersForDataset = managedLayers[layerConfig.id];
+      if (layersForDataset && Array.isArray(layersForDataset)) {
+        orderedLayers.push(...layersForDataset);
+      }
+    });
+    
+    return orderedLayers;
+  };
+
+  // Separate useEffect for cleanup to avoid infinite loop
   useEffect(() => {
-    const allLayers = Object.values(managedLayers).flat();
+    // Clean up managed layers for datasets that are no longer in layerOpacityList
+    const activeDatasetIds = new Set(layerOpacityList.map(layer => layer.id));
+    
+    setManagedLayers((prevManaged) => {
+      const shouldCleanup = Object.keys(prevManaged).some(datasetId => 
+        !activeDatasetIds.has(datasetId)
+      );
+      
+      if (!shouldCleanup) return prevManaged; // No cleanup needed
+      
+      const cleanedManaged = {};
+      Object.keys(prevManaged).forEach(datasetId => {
+        if (activeDatasetIds.has(datasetId)) {
+          cleanedManaged[datasetId] = prevManaged[datasetId];
+        } else {
+          console.log(`Cleaning up layers for removed dataset: ${datasetId}`);
+        }
+      });
+      
+      return cleanedManaged;
+    });
+  }, [layerOpacityList]); // Only depend on layerOpacityList
+
+  useEffect(() => {
+    // Update deck.gl with ordered layers
+    const allLayers = getOrderedLayers();
 
     if (deckOverlay) {
       deckOverlay.setProps({ layers: allLayers });
@@ -50,7 +92,7 @@ export function DeckGlLayerManager({
     if (onLayersUpdate) {
       onLayersUpdate(allLayers);
     }
-  }, [managedLayers, deckOverlay, onLayersUpdate]);
+  }, [managedLayers, deckOverlay, onLayersUpdate, layerOpacityList]);
 
   useEffect(() => {
     if (!datasetId) return;
@@ -136,68 +178,6 @@ export function DeckGlLayerManager({
         newLayers.push(pointCloudLayer);
         break;
       }
-      //OMI
-      // case 'raster': {
-      //   const bounds = calculateGeoJSONBounds(layerData.features);
-      //   console.log('Layer Data Features:', layerData.features);
-      //   const rasterLayers = layerData.features
-      //     .slice(0, 1)
-      //     .map((feature, index) => {
-      //       const { collection, id: itemId, properties } = feature;
-      //       // const tileUrl = buildRasterTileUrl(collection, itemId, { assets: 'cog_default', colormap: 'plasma', rescale: '19816169791488, 7981616979148800', nodata: '-9999' });
-      //       const tileUrl = buildRasterTileUrl(collection, itemId, {
-      //         assets: 'cog_default',
-      //         colormap: 'viridis',
-      //         rescale: '10, 50',
-      //         nodata: '-9999',
-      //       });
-      //       return new TileLayer({
-      //         id: getLayerId('raster', `${datasetId}-${index}-${itemId}`),
-      //         data: tileUrl,
-      //         minZoom: 0,
-      //         maxZoom: 19,
-      //         tileSize: 256,
-      //         visible: visible,
-      //         pickable: true,
-      //         opacity: dynamicOpacity,
-      //         renderSubLayers: (props) => {
-      //           const {
-      //             bbox: { west, south, east, north },
-      //           } = props.tile;
-      //           return new BitmapLayer({
-      //             ...props,
-      //             data: null,
-      //             image: props.data,
-      //             bounds: [west, south, east, north],
-      //             modelMatrix: new Matrix4().translate([0, 0, 0]),
-      //           });
-      //         },
-      //         onClick: (info) => {
-      //           if (onStationClick)
-      //             onStationClick({
-      //               type: 'raster',
-      //               feature,
-      //               tile: info.tile,
-      //               coordinate: info.coordinate,
-      //               datetime: properties?.datetime,
-      //             });
-      //         },
-      //       });
-      //     });
-      //   newLayers.push(...rasterLayers);
-      //   if (bounds && mapContext?.map) {
-      //     setTimeout(() => {
-      //       mapContext.map.flyTo({
-      //         center: [-98.5795, 39.8283],
-      //         zoom: 2,
-      //         pitch: 0,
-      //         bearing: 0,
-      //         duration: 2000,
-      //       });
-      //     }, 500);
-      //   }
-      //   break;
-      // }
       case 'raster': {
         const bounds = calculateGeoJSONBounds(layerData.features);
         const feature =
@@ -288,12 +268,17 @@ export function DeckGlLayerManager({
         );
         const levValues = varValues?.lev || [];
 
+        // Get the base z-index for this dataset based on its position in layerOpacityList
+        const datasetIndex = layerOpacityList.findIndex(layer => layer.id === datasetId);
+        const baseZOffset = datasetIndex * 100; // Small offset based on layer order
+
         tileUrls.forEach((tileUrl, index) => {
           const lev = levValues[index];
 
           if (lev === undefined) return;
 
-          const zOffset = lev * 1000;
+          // Use small relative z-offset instead of massive absolute offset
+          const relativeZOffset = baseZOffset + (index * 10); // Just 10 units between elevation levels
           const BOUNDS = [-125.0, 24.5, -66.5, 49.5];
           const netcdfLayer = new TileLayer({
             id: `${getLayerId('netcdf-2d', datasetId)}-lev-${lev}`,
@@ -322,7 +307,7 @@ export function DeckGlLayerManager({
                 data: null,
                 image: props.data,
                 bounds: [west, south, east, north],
-                modelMatrix: new Matrix4().translate([0, 0, zOffset]),
+                modelMatrix: new Matrix4().translate([0, 0, relativeZOffset]),
               });
             },
             onClick: (info) => {

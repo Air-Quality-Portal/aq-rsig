@@ -29,7 +29,7 @@ import './index.css';
 import { LineChart } from '../../components/lineChart';
 import ItemAnimation from '../../components/ui/itemAnimation';
 
-const TITLE = 'RSIG Dashboard';
+const TITLE = 'Air Quality Dashboard';
 const DESCRIPTION = '';
 
 export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
@@ -37,6 +37,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   const [openDrawer, setOpenDrawer] = useState(true);
   const [activeLayerUrl, setActiveLayerUrl] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [selectedDatasetId, setSelectedDatasetId] = useState(null);
   const [layerData, setLayerData] = useState(null);
   const [layerDisplayList, setLayerDisplayList] = useState([]);
   const {
@@ -50,6 +51,9 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   } = useStationChart();
 
   const [currentRasterFeature, setCurrentRasterFeature] = useState(null);
+
+  // Store layer data for each dataset separately
+  const allDatasetLayerData = useRef(new Map());
 
   const onLayerSelect = (url) => {
     setActiveLayerUrl(url);
@@ -83,7 +87,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
       );
       if (existingDisplayIndex !== -1) {
         // If the item is already in our list, update its details
-        // but preserve its existing opacity.
+        // but preserve its existing opacity and position.
         const updatedList = [...currentList];
         updatedList[existingDisplayIndex] = {
           ...dataset, // new metadata
@@ -91,6 +95,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
         };
         return updatedList;
       }
+      // NEW datasets go to the END (top of render order)
       return [...currentList, { ...dataset, opacity: 100 }];
     });
   };
@@ -101,15 +106,28 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   };
 
   const onRecordSelect = (dataWithMetadata) => {
+    let datasetInfo, actualData;
+    
     if (dataWithMetadata.datasetInfo && dataWithMetadata.galleryType) {
-      const datasetInfo = dataWithMetadata.datasetInfo;
-      const actualData = { ...dataWithMetadata, datasetInfo: undefined };
-      setSelectedRecord(datasetInfo);
-      setLayerData(actualData);
+      datasetInfo = dataWithMetadata.datasetInfo;
+      actualData = { ...dataWithMetadata, datasetInfo: undefined };
     } else {
-      setSelectedRecord(dataWithMetadata);
-      setLayerData(dataWithMetadata);
+      datasetInfo = dataWithMetadata;
+      actualData = dataWithMetadata;
     }
+
+    // Store the layer data for this dataset
+    allDatasetLayerData.current.set(datasetInfo.id, actualData);
+    
+    // Always update selectedRecord and layerData for the newly selected dataset
+    setSelectedRecord(datasetInfo);
+    setLayerData(actualData);
+    
+    // If this is a raster dataset, update the selected dataset ID
+    if (datasetInfo.type === 'raster') {
+      setSelectedDatasetId(datasetInfo.id);
+    }
+    
     setOpenDrawer(false);
   };
 
@@ -125,6 +143,44 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     );
   };
 
+  // Handle layer reordering (now with dropdown sync)
+  const handleLayerReorder = (reorderedLayers) => {
+    console.log('Reordering layers:', reorderedLayers.map(l => l.name));
+    setLayerDisplayList(reorderedLayers);
+    
+    // Keep the allActiveDatasets ref in sync
+    allActiveDatasets.current = reorderedLayers;
+
+    // SYNC DROPDOWN: Update selected dataset to the new top raster
+    const newTopRaster = [...reorderedLayers].reverse().find(d => d.type === 'raster');
+    if (newTopRaster && newTopRaster.id !== selectedDatasetId) {
+      setSelectedDatasetId(newTopRaster.id);
+      
+      // Update the layer data for the new top raster
+      const storedLayerData = allDatasetLayerData.current.get(newTopRaster.id);
+      if (storedLayerData) {
+        setSelectedRecord(newTopRaster);
+        setLayerData(storedLayerData);
+      }
+    }
+  };
+
+  // Move layer to top when selected from dropdown
+  const moveLayerToTop = (datasetId) => {
+    setLayerDisplayList((currentList) => {
+      console.log('Layer order before move:', currentList.map(l => l.name));
+      const layerIndex = currentList.findIndex(layer => layer.id === datasetId);
+      if (layerIndex === -1) return currentList;
+      
+      const reorderedList = [...currentList];
+      const [movedLayer] = reorderedList.splice(layerIndex, 1);
+      reorderedList.push(movedLayer); // Move to end (top of rendering order)
+      
+      console.log('Layer order after move:', reorderedList.map(l => l.name));
+      return reorderedList;
+    });
+  };
+
   const handleLayerRemove = (datasetId) => {
     setLayerDisplayList((currentList) =>
       currentList.filter((item) => item.id !== datasetId)
@@ -132,9 +188,29 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     allActiveDatasets.current = allActiveDatasets.current.filter(
       (item) => item.id !== datasetId
     );
+    
+    // Remove stored layer data
+    allDatasetLayerData.current.delete(datasetId);
+    
     if (selectedRecord?.id === datasetId) {
-      setSelectedRecord(null);
-      setLayerData(null);
+      // If we're removing the currently selected dataset, try to select another raster
+      const remainingRasters = layerDisplayList.filter(
+        (item) => item.id !== datasetId && item.type === 'raster'
+      );
+      
+      if (remainingRasters.length > 0) {
+        const nextRaster = remainingRasters[0];
+        setSelectedDatasetId(nextRaster.id);
+        setSelectedRecord(nextRaster);
+        const storedLayerData = allDatasetLayerData.current.get(nextRaster.id);
+        if (storedLayerData) {
+          setLayerData(storedLayerData);
+        }
+      } else {
+        setSelectedRecord(null);
+        setLayerData(null);
+        setSelectedDatasetId(null);
+      }
     }
   };
 
@@ -167,6 +243,75 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
       setCurrentRasterFeature(null);
     }
   }, [layerData, selectedRecord]);
+
+  const rasterDatasets = layerDisplayList.filter(
+    (dataset) => dataset.type === 'raster'
+  );
+
+  // UPDATED: Handle dataset change with layer reordering
+  const handleDatasetChange = (event) => {
+    const newDatasetId = event.target.value;
+    setSelectedDatasetId(newDatasetId);
+
+    // Find the selected dataset
+    const selectedDataset = layerDisplayList.find((d) => d.id === newDatasetId);
+    if (selectedDataset) {
+      setSelectedRecord(selectedDataset);
+      
+      // Get the stored layer data for this dataset
+      const storedLayerData = allDatasetLayerData.current.get(newDatasetId);
+      if (storedLayerData) {
+        setLayerData(storedLayerData);
+      } else {
+        // Fallback to the dataset itself if no stored data
+        setLayerData(selectedDataset);
+      }
+      
+      // Move this layer to the top of the rendering order
+      moveLayerToTop(newDatasetId);
+    }
+  };
+
+  // Update the auto-selection effect to sync with top raster layer
+  useEffect(() => {
+    if (rasterDatasets.length > 0) {
+      // Find the last (top-rendering) raster dataset
+      const topRasterDataset = [...rasterDatasets].reverse().find(d => d.type === 'raster');
+      
+      if (topRasterDataset && selectedDatasetId !== topRasterDataset.id) {
+        setSelectedDatasetId(topRasterDataset.id);
+        
+        // Set the layer data for the top raster
+        const storedLayerData = allDatasetLayerData.current.get(topRasterDataset.id);
+        if (storedLayerData) {
+          setSelectedRecord(topRasterDataset);
+          setLayerData(storedLayerData);
+        }
+      }
+    } else {
+      // No raster datasets available, clear selection
+      setSelectedDatasetId(null);
+    }
+  }, [layerDisplayList]); // Changed dependency to layerDisplayList instead of rasterDatasets
+
+  // Create dropdown component
+  const titleDropdown = (
+    <div className='mb-3'>
+      <select
+        id='dataset-select'
+        value={selectedDatasetId || ''}
+        onChange={handleDatasetChange}
+        className='w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+      >
+        <option value=''>Select a dataset...</option>
+        {rasterDatasets.map((dataset) => (
+          <option key={dataset.id} value={dataset.id}>
+            {dataset.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 
   return (
     <Box className='fullSize'>
@@ -213,6 +358,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
                 onClose={console.log('')}
                 onLayerOpacityChange={handleOpacityChange}
                 onLayerRemove={handleLayerRemove}
+                onLayerReorder={handleLayerReorder}
               />
             </Stack>
           </Paper>
@@ -222,8 +368,10 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
             setOpenDrawer={setOpenDrawer}
             handleResetHome={console.log('')}
           />
-          {(layerData?.galleryType === 'raster' ||
-            selectedRecord?.type === 'raster') &&
+          {selectedDatasetId &&
+            rasterDatasets.length > 0 &&
+            selectedRecord?.type === 'raster' &&
+            selectedRecord?.id === selectedDatasetId &&
             Array.isArray(layerData?.features) &&
             layerData.features.length > 0 && (
               <div
@@ -241,7 +389,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
                 <ItemAnimation
                   items={layerData.features}
                   onFrameChange={(feature) => setCurrentRasterFeature(feature)}
-                  title='Dataset Timeline'
+                  title={titleDropdown}
                   initialAutoPlay={false}
                   speedMs={700}
                 />
