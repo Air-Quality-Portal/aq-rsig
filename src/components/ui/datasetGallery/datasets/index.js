@@ -5,9 +5,10 @@ export const galleryData = {
       name: 'OMI-2D',
       thumbnailUrl: '/path/to/thumbnail1.jpg',
       type: 'raster',
-      description: 'Berkeley High Resolution(BEHR) Ozone Monitoring Instrument (OMI) Integrated Column Amount of NO2 in the Tropopsphere.',
+      description:
+        'Berkeley High Resolution(BEHR) Ozone Monitoring Instrument (OMI) Integrated Column Amount of NO2 in the Tropopsphere.',
       units: 'molec/cm²',
-      rescale_values : [0.1e+15, 6.4e+15],
+      rescale_values: [0.1e15, 6.4e15],
       colormap: 'viridis',
       info: 'https://amt.copernicus.org/articles/14/455/2021/',
       time_interval: 'daily',
@@ -39,17 +40,22 @@ export const galleryData = {
       info: 'https://data.nasa.gov/dataset/tropess-chemical-reanalysis-surface-total-nox-emissions-monthly-2-dimensional-product-v1-t-2206f',
       time_interval: 'yearly',
       start_date: '2017-01-01T00:00:00+00:00',
-      end_date: '2020-12-31T00:00:00+00:00'
+      end_date: '2022-12-31T00:00:00+00:00'
     }
   ],
   'Lidar': [
     {
       id: 'calipso-point-cloud',
-      name: 'CALIPSO',
+      name: 'CALIPSO Lidar Level 2 Aerosol Profile, Version 4‑51',
       type: 'point-cloud',
       url: 'https://rsig-point-cloud.s3.us-west-2.amazonaws.com/ept-tileset/tileset.json',
       thumbnailUrl: '/path/to/thumbnail1.jpg',
-      description: 'CALIPSO lidar point cloud data'
+      description: 'CALIPSO (Cloud-Aerosol Lidar and Infrared Pathfinder Satellite Observations) data provides high-resolution vertical profiles of clouds and aerosols in the atmosphere using lidar measurements from space. It helps study cloud structure, aerosol types, and their effects on climate and weather',
+      units: ' km⁻¹ sr⁻¹',
+      info: 'https://catalog.data.gov/dataset/calipso-lidar-level-2-aerosol-profile-v4-51-06c1f',
+      time_interval: '100minutes',
+      start_date: '2006-06-11T00:00:00+00:00',
+      end_date: '2023-06-30T00:00:00+00:00'
     }
   ]
 };
