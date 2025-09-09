@@ -25,7 +25,7 @@ export const MapboxProvider = ({ children }) => {
   useEffect(() => {
     if (map.current) return;
 
-    const mapboxStyleUrl = 'mapbox://styles/mapbox/satellite-v9';
+    const mapboxStyleUrl = 'mapbox://styles/mapbox/light-v10';
 
     mapboxgl.accessToken = accessToken;
     map.current = new mapboxgl.Map({
