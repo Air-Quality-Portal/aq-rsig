@@ -29,7 +29,7 @@ import './index.css';
 import { LineChart } from '../../components/lineChart';
 import ItemAnimation from '../../components/ui/itemAnimation';
 
-const TITLE = 'Air Quality Dashboard';
+const TITLE = 'RSIG Dashboard';
 const DESCRIPTION = '';
 
 export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
@@ -371,7 +371,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
           >
             <Stack sx={{ p: 1.5, overflowY: 'auto' }} spacing={1.5}>
               <Title title={TITLE} description={DESCRIPTION} />
-              <Search vizItems={[]} onSelectedVizItemSearch={console.log('')} />
+              {/* <Search vizItems={[]} onSelectedVizItemSearch={console.log('')} /> */}
               {/* <FilterByDate vizItems={[]} onFilteredVizItems={[]} /> */}
 
               {/* Pass spatial subset props */}
