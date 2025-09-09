@@ -73,43 +73,143 @@ const LayerCard = ({
       case 'feature': // For AQS
         return null;
 
-      case 'point-cloud':
-        const legendItems = [
-          { color: 'red', label: '0 - 500' },
-          { color: 'green', label: '500 - 10,000' },
-          { color: 'yellow', label: '10,000 - 60,000' },
-          { color: 'blue', label: '> 60,000' },
-        ];
+      case 'point-cloud': // CALIPSO - Cartesian coordinate style
         return (
           <Box
             sx={{
               display: 'flex',
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              gap: 0.2,
+              flexDirection: 'column',
+              gap: 0.5,
+              width: '100%',
+              alignItems: 'flex-start',
+              padding: 1, // Reduced padding
             }}
           >
-            {legendItems.map((item) => (
+            {/* Cartesian coordinate system */}
+            <Box
+              sx={{
+                position: 'relative',
+                width: '100%',
+                height: 70, // Reduced height
+              }}
+            >
+              {/* Vertical axis (Y-axis) - Height */}
               <Box
-                key={item.label}
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.1 }}
+                sx={{
+                  position: 'absolute',
+                  left: 45, // Adjusted for compact layout
+                  top: 5,
+                  width: 2,
+                  height: 35, // Shorter axis
+                  backgroundColor: '#666',
+                }}
+              />
+              
+              {/* Y-axis labels - Height */}
+              <Typography
+                variant='caption'
+                sx={{
+                  position: 'absolute',
+                  right: 'calc(100% - 40px)',
+                  top: 0,
+                  fontSize: '0.55rem',
+                  color: 'text.primary',
+                  whiteSpace: 'nowrap',
+                }}
               >
-                <Box
-                  sx={{
-                    width: 12,
-                    height: 12,
-                    backgroundColor: item.color,
-                    borderRadius: '2px',
-                  }}
-                />
-                <Typography
-                  variant='caption'
-                  sx={{ fontSize: '0.5rem', color: 'text.secondary' }}
-                >
-                  {item.label}
-                </Typography>
-              </Box>
-            ))}
+                30 km
+              </Typography>
+              
+              <Typography
+                variant='caption'
+                sx={{
+                  position: 'absolute',
+                  right: 'calc(100% - 40px)',
+                  top: 35,
+                  fontSize: '0.55rem',
+                  color: 'text.primary',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                0 km
+              </Typography>
+
+              {/* Color blocks that form the X-axis itself */}
+              {[
+                { color: 'red', position: 47, label: '0', width: 22 },
+                { color: 'green', position: 69, label: '0.0127', width: 22 },
+                { color: 'yellow', position: 91, label: '0.254', width: 22 },
+                { color: 'blue', position: 113, label: '1.523', width: 18 },
+              ].map((item) => (
+                <Box key={item.label}>
+                  {/* Color block forming the axis */}
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      left: item.position,
+                      top: 40,
+                      width: item.width,
+                      height: 5, // Thinner blocks
+                      backgroundColor: item.color,
+                      border: '1px solid rgba(0,0,0,0.2)',
+                    }}
+                  />
+                  
+                  {/* Slanted value labels */}
+                  <Typography
+                    variant='caption'
+                    sx={{
+                      position: 'absolute',
+                      left: item.position + 1,
+                      top: 60,
+                      fontSize: '0.45rem',
+                      color: 'text.primary',
+                      fontWeight: 'medium',
+                      transform: 'rotate(-45deg)',
+                      transformOrigin: 'left bottom',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {item.label}
+                  </Typography>
+                </Box>
+              ))}
+              
+              {/* Y-axis label - moved much further left */}
+              <Typography
+                variant='caption'
+                sx={{
+                  position: 'absolute',
+                  left: -50,
+                  top: 20,
+                  fontSize: '0.5rem',
+                  color: 'text.primary',
+                  fontWeight: 'bold',
+                  transform: 'rotate(-90deg)',
+                  transformOrigin: 'center',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Height from ground
+              </Typography>
+              
+              {/* X-axis label */}
+              <Typography
+                variant='caption'
+                sx={{
+                  position: 'absolute',
+                  left: 65,
+                  top: 70,
+                  fontSize: '0.5rem',
+                  color: 'text.primary',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Backscatter (km⁻¹ sr⁻¹)
+              </Typography>
+            </Box>
           </Box>
         );
 
@@ -188,21 +288,26 @@ const LayerCard = ({
                 >
                   {name}
                   {/* Show indicator for the top raster dataset */}
-                  {type === 'raster' && topRasterDataset && dataset.id === topRasterDataset.id && (
-                    <Typography component="span" sx={{ ml: 1, fontSize: '0.7rem', color: 'primary.main', fontWeight: 'bold' }}>
-                      (Active)
-                    </Typography>
-                  )}
+                  {type === 'raster' &&
+                    topRasterDataset &&
+                    dataset.id === topRasterDataset.id && (
+                      <Typography
+                        component='span'
+                        sx={{
+                          ml: 1,
+                          fontSize: '0.7rem',
+                          color: 'primary.main',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        (Active)
+                      </Typography>
+                    )}
                 </Typography>
-                <Typography
-                  variant='caption'
-                  sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
-                >
-                  {type} • Position {index + 1} {isTopLayer ? '(Top)' : ''}
-                </Typography>
+                {/* REMOVED: All type/position info text for ALL layer types */}
               </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <IconButton
                   size='small'
                   onClick={handleOpacityClick}
@@ -279,7 +384,6 @@ export function RecordDetailView({
   layers,
   allActiveDatasets = [],
   allActiveLayers,
-  onLayersChange,
   onLayerOpacityChange,
   onLayerRemove,
   onLayerReorder,
@@ -288,7 +392,9 @@ export function RecordDetailView({
   const [isDragging, setIsDragging] = useState(false);
 
   // Find the top-rendering raster dataset (last raster in the array)
-  const topRasterDataset = [...allActiveDatasets].reverse().find(d => d.type === 'raster');
+  const topRasterDataset = [...allActiveDatasets]
+    .reverse()
+    .find((d) => d.type === 'raster');
 
   const handleDragStart = () => {
     setIsDragging(true);
@@ -318,7 +424,10 @@ export function RecordDetailView({
       // Convert back to original order for the backend
       const finalOrder = reorderedItems.reverse();
 
-      console.log('Drag reorder from RecordDetailView:', finalOrder.map(item => item.name));
+      console.log(
+        'Drag reorder from RecordDetailView:',
+        finalOrder.map((item) => item.name)
+      );
       onLayerReorder(finalOrder);
     }
   };
@@ -378,9 +487,7 @@ export function RecordDetailView({
           Active Datasets
         </Typography>
         <Typography variant='caption' color='text.secondary'>
-          {allActiveDatasets.length}{' '}
-          {allActiveDatasets.length === 1 ? 'dataset' : 'datasets'} • Drag to
-          reorder • Top items render on top
+          Drag to reorder
         </Typography>
       </Box>
 
@@ -403,16 +510,20 @@ export function RecordDetailView({
               {/* Handle datasets with multiple layers (like Tropess) vs single layer datasets */}
               {[...allActiveDatasets].reverse().map((dataset, datasetIndex) => {
                 const layersForDataset = allActiveLayers[dataset.id];
-                
+
                 // If dataset has multiple layers (like Tropess), show each layer separately
-                if (layersForDataset && Array.isArray(layersForDataset) && layersForDataset.length > 1) {
+                if (
+                  layersForDataset &&
+                  Array.isArray(layersForDataset) &&
+                  layersForDataset.length > 1
+                ) {
                   return layersForDataset.map((layer, layerIndex) => (
                     <LayerCard
                       key={`${dataset.id}-${layer.id || layerIndex}`}
                       dataset={{
                         ...dataset,
                         name: `${dataset.name} (Level ${layerIndex + 1})`, // Add level indicator
-                        layerId: layer.id // Store the individual layer ID
+                        layerId: layer.id, // Store the individual layer ID
                       }}
                       index={datasetIndex * 10 + layerIndex} // Unique index for drag operations
                       onOpacityChange={handleOpacityChange}
