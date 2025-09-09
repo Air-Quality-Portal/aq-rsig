@@ -29,7 +29,6 @@ const isPointInBounds = (lng, lat, bounds) => {
   );
 };
 
-// NEW: Utility function to check if a tile intersects with spatial bounds
 const tileIntersectsBounds = (west, south, east, north, bounds) => {
   if (!bounds) return true;
   return (
@@ -40,23 +39,27 @@ const tileIntersectsBounds = (west, south, east, north, bounds) => {
   );
 };
 
-// NEW: Add spatial bounds to URL parameters
 const addSpatialBoundsToUrl = (baseUrl, bounds) => {
   if (!bounds) return baseUrl;
   const url = new URL(baseUrl);
-  url.searchParams.set('bbox', `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`);
+  url.searchParams.set(
+    'bbox',
+    `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`
+  );
   return url.toString();
 };
 
-// NEW: Get dataset metadata for colormap and rescale values
 const getDatasetMetadata = (datasetId, allActiveDatasets) => {
-  const dataset = allActiveDatasets.find(d => d.id === datasetId);
+  const dataset = allActiveDatasets.find((d) => d.id === datasetId);
   return dataset || {};
 };
 
-// NEW: Format rescale values for URL
 const formatRescaleValues = (rescaleValues) => {
-  if (!rescaleValues || !Array.isArray(rescaleValues) || rescaleValues.length !== 2) {
+  if (
+    !rescaleValues ||
+    !Array.isArray(rescaleValues) ||
+    rescaleValues.length !== 2
+  ) {
     return '10, 50'; // Default fallback
   }
   return `${rescaleValues[0]}, ${rescaleValues[1]}`;
@@ -72,8 +75,8 @@ export function DeckGlLayerManager({
   visible = true,
   onLayersUpdate,
   layerOpacityList = [],
-  spatialSubset, // Spatial subset bounds
-  allActiveDatasets = [], // NEW: Add datasets metadata
+  spatialSubset,
+  allActiveDatasets = [],
 }) {
   const [managedLayers, setManagedLayers] = useState({});
   const mapContext = useMapbox();
@@ -90,40 +93,40 @@ export function DeckGlLayerManager({
   // Function to get layers in the correct order based on layerOpacityList
   const getOrderedLayers = () => {
     const orderedLayers = [];
-    
+
     // Process layers in the order they appear in layerOpacityList
     // Items later in the array will render on top
-    layerOpacityList.forEach(layerConfig => {
+    layerOpacityList.forEach((layerConfig) => {
       const layersForDataset = managedLayers[layerConfig.id];
       if (layersForDataset && Array.isArray(layersForDataset)) {
         orderedLayers.push(...layersForDataset);
       }
     });
-    
+
     return orderedLayers;
   };
 
   // Separate useEffect for cleanup to avoid infinite loop
   useEffect(() => {
     // Clean up managed layers for datasets that are no longer in layerOpacityList
-    const activeDatasetIds = new Set(layerOpacityList.map(layer => layer.id));
-    
+    const activeDatasetIds = new Set(layerOpacityList.map((layer) => layer.id));
+
     setManagedLayers((prevManaged) => {
-      const shouldCleanup = Object.keys(prevManaged).some(datasetId => 
-        !activeDatasetIds.has(datasetId)
+      const shouldCleanup = Object.keys(prevManaged).some(
+        (datasetId) => !activeDatasetIds.has(datasetId)
       );
-      
+
       if (!shouldCleanup) return prevManaged; // No cleanup needed
-      
+
       const cleanedManaged = {};
-      Object.keys(prevManaged).forEach(datasetId => {
+      Object.keys(prevManaged).forEach((datasetId) => {
         if (activeDatasetIds.has(datasetId)) {
           cleanedManaged[datasetId] = prevManaged[datasetId];
         } else {
           console.log(`Cleaning up layers for removed dataset: ${datasetId}`);
         }
       });
-      
+
       return cleanedManaged;
     });
   }, [layerOpacityList]); // Only depend on layerOpacityList
@@ -171,7 +174,7 @@ export function DeckGlLayerManager({
       //CALIPSO
       case 'point-cloud': {
         // Add spatial bounds to point cloud URL if available
-        const spatialAwareUrl = spatialSubset 
+        const spatialAwareUrl = spatialSubset
           ? addSpatialBoundsToUrl(activeLayerUrl, spatialSubset)
           : activeLayerUrl;
 
@@ -243,7 +246,7 @@ export function DeckGlLayerManager({
         let rasterLayers = [];
         if (feature) {
           const { collection, id: itemId, properties } = feature;
-          
+
           // NEW: Use dynamic colormap and rescale values from dataset metadata
           const tileParams = {
             assets: 'cog_default',
@@ -251,7 +254,7 @@ export function DeckGlLayerManager({
             rescale: formatRescaleValues(datasetMetadata.rescale_values), // Use dataset rescale values
             nodata: '-9999',
           };
-          
+
           // Add spatial bounds if available
           if (spatialSubset) {
             tileParams.bbox = `${spatialSubset.west},${spatialSubset.south},${spatialSubset.east},${spatialSubset.north}`;
@@ -259,7 +262,7 @@ export function DeckGlLayerManager({
 
           console.log('Raster tile params:', tileParams);
           const tileUrl = buildRasterTileUrl(collection, itemId, tileParams);
-          
+
           const rasterLayer = new TileLayer({
             id: getLayerId('raster', `${datasetId}-${itemId}`),
             data: tileUrl,
@@ -273,12 +276,15 @@ export function DeckGlLayerManager({
               const {
                 bbox: { west, south, east, north },
               } = props.tile;
-              
+
               // Filter tiles based on spatial subset
-              if (spatialSubset && !tileIntersectsBounds(west, south, east, north, spatialSubset)) {
+              if (
+                spatialSubset &&
+                !tileIntersectsBounds(west, south, east, north, spatialSubset)
+              ) {
                 return null;
               }
-              
+
               return new BitmapLayer({
                 ...props,
                 data: null,
@@ -332,21 +338,16 @@ export function DeckGlLayerManager({
           newLayers = [];
           break;
         }
-        
-        // NEW: Add dataset metadata to netcdf parameters
+
         const netcdfParams = {
           ...rest,
-          // Add colormap and rescale from dataset metadata
           colormap: datasetMetadata.colormap || 'reds',
           rescale: formatRescaleValues(datasetMetadata.rescale_values),
-          ...(spatialSubset && { 
+          ...(spatialSubset && {
             spatialBounds: spatialSubset,
-            bbox: `${spatialSubset.west},${spatialSubset.south},${spatialSubset.east},${spatialSubset.north}`
-          })
+            bbox: `${spatialSubset.west},${spatialSubset.south},${spatialSubset.east},${spatialSubset.north}`,
+          }),
         };
-
-        console.log('NetCDF params:', netcdfParams);
-        
         const tileUrls = buildNetCDF2DTileUrl(
           conceptId,
           datetime,
@@ -356,9 +357,10 @@ export function DeckGlLayerManager({
         );
         const levValues = varValues?.lev || [];
 
-        // Get the base z-index for this dataset based on its position in layerOpacityList
-        const datasetIndex = layerOpacityList.findIndex(layer => layer.id === datasetId);
-        const baseZOffset = datasetIndex * 1000; // Small offset based on layer order
+        const datasetIndex = layerOpacityList.findIndex(
+          (layer) => layer.id === datasetId
+        );
+        const baseZOffset = datasetIndex * 10; 
 
         tileUrls.forEach((tileUrl, index) => {
           const lev = levValues[index];
@@ -366,17 +368,17 @@ export function DeckGlLayerManager({
           if (lev === undefined) return;
 
           // Use small relative z-offset instead of massive absolute offset
-          const relativeZOffset = baseZOffset + (index * 10); // Just 10 units between elevation levels
+          const relativeZOffset = baseZOffset + index * 500000; 
           const BOUNDS = [-125.0, 24.5, -66.5, 49.5];
-          
+
           // Use spatial subset bounds if available, otherwise use default bounds
           const effectiveBounds = spatialSubset || {
             west: BOUNDS[0],
             south: BOUNDS[1],
             east: BOUNDS[2],
-            north: BOUNDS[3]
+            north: BOUNDS[3],
           };
-          
+
           const netcdfLayer = new TileLayer({
             id: `${getLayerId('netcdf-2d', datasetId)}-lev-${lev}`,
             data: tileUrl,
@@ -390,7 +392,7 @@ export function DeckGlLayerManager({
               const {
                 bbox: { west, south, east, north },
               } = props.tile;
-              
+
               // Use effective bounds for filtering
               if (
                 east < effectiveBounds.west ||
@@ -447,23 +449,25 @@ export function DeckGlLayerManager({
       //AQS
       case 'feature': {
         const geojsonData = layerData;
-        
+
         // Apply spatial filtering to station data
         let filteredFeatures = geojsonData.features;
         if (spatialSubset) {
-          filteredFeatures = geojsonData.features.filter(feature => {
+          filteredFeatures = geojsonData.features.filter((feature) => {
             const [lng, lat] = feature.geometry.coordinates;
             return isPointInBounds(lng, lat, spatialSubset);
           });
-          
-          console.log(`Spatial filtering: ${geojsonData.features.length} -> ${filteredFeatures.length} stations`);
+
+          console.log(
+            `Spatial filtering: ${geojsonData.features.length} -> ${filteredFeatures.length} stations`
+          );
         }
-        
+
         const stationBounds = calculateGeoJSONBounds(filteredFeatures);
         const iconSvg = `<svg fill="#2496ED" width="30px" height="30px" viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#000000" stroke-width="10.24"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g><g id="SVGRepo_iconCarrier"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35-817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g></svg>`;
         const svgToDataURL = (svg) =>
           `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-        
+
         // Use filtered features for icon data
         const iconData = filteredFeatures.map((feature) => ({
           ...feature.properties,
@@ -471,7 +475,7 @@ export function DeckGlLayerManager({
           position: feature.geometry.coordinates,
           feature: feature,
         }));
-        
+
         const stationLayer = new IconLayer({
           id: getLayerId('station', datasetId),
           data: iconData,
@@ -510,19 +514,22 @@ export function DeckGlLayerManager({
             },
         });
         newLayers.push(stationLayer);
-        
+
         // Zoom to filtered stations or spatial subset
         if (mapContext?.map) {
           setTimeout(() => {
             if (spatialSubset) {
               // Zoom to spatial subset bounds
-              mapContext.map.fitBounds([
-                [spatialSubset.west, spatialSubset.south],
-                [spatialSubset.east, spatialSubset.north]
-              ], {
-                padding: 50,
-                duration: 2000,
-              });
+              mapContext.map.fitBounds(
+                [
+                  [spatialSubset.west, spatialSubset.south],
+                  [spatialSubset.east, spatialSubset.north],
+                ],
+                {
+                  padding: 50,
+                  duration: 2000,
+                }
+              );
             } else if (
               stationBounds &&
               stationBounds.minLng !== Infinity &&
