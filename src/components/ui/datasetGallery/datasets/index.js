@@ -51,7 +51,7 @@ export const galleryData = {
       name: 'AQS Stations',
       type: 'feature',
       thumbnailUrl: '/path/to/thumbnail1.jpg',
-      description: 'Air Quality System monitoring stations',
+      description: 'EPA Air Quality System (AQS) monitoring stations that measure surface-level gaseous pollutants, including NOx, O₃, and others.',
       info: 'https://data.nasa.gov/dataset/tropess-chemical-reanalysis-surface-total-nox-emissions-monthly-2-dimensional-product-v1-t-2206f',
       time_interval: 'yearly',
       start_date: '2017-01-01T00:00:00+00:00',
@@ -61,11 +61,11 @@ export const galleryData = {
   'Lidar': [
     {
       id: 'calipso-point-cloud',
-      name: 'CALIPSO Lidar Level 2 Aerosol Profile, Version 4‑51',
+      name: 'CALIPSO 532 nm Backscatter (Level 1, V4-51)',
       type: 'point-cloud',
       url: 'https://rsig-point-cloud.s3.us-west-2.amazonaws.com/ept-tileset/tileset.json',
       thumbnailUrl: '/path/to/thumbnail1.jpg',
-      description: 'CALIPSO (Cloud-Aerosol Lidar and Infrared Pathfinder Satellite Observations) data provides high-resolution vertical profiles of clouds and aerosols in the atmosphere using lidar measurements from space. It helps study cloud structure, aerosol types, and their effects on climate and weather',
+      description: 'CALIPSO Level 1 data provides calibrated, geolocated lidar measurements of attenuated backscatter at multiple wavelengths. These observations are the foundation for higher-level cloud and aerosol products, enabling studies of atmospheric vertical structure and optical properties.',
       units: ' km⁻¹ sr⁻¹',
       info: 'https://catalog.data.gov/dataset/calipso-lidar-level-2-aerosol-profile-v4-51-06c1f',
       time_interval: '100minutes',
