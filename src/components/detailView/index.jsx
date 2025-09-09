@@ -82,7 +82,7 @@ const LayerCard = ({
               gap: 0.5,
               width: '100%',
               alignItems: 'flex-start',
-              padding: 1, // Reduced padding
+              padding: 1,
             }}
           >
             {/* Cartesian coordinate system */}
@@ -90,31 +90,33 @@ const LayerCard = ({
               sx={{
                 position: 'relative',
                 width: '100%',
-                height: 70, // Reduced height
+                height: 70,
               }}
             >
-              {/* Vertical axis (Y-axis) - Height */}
+              {/* Vertical axis (Y-axis) - moved left */}
               <Box
                 sx={{
                   position: 'absolute',
-                  left: 45, // Adjusted for compact layout
+                  left: 20, // Moved from 45 to 20
                   top: 5,
                   width: 2,
-                  height: 35, // Shorter axis
+                  height: 35,
                   backgroundColor: '#666',
                 }}
               />
               
-              {/* Y-axis labels - Height */}
+              {/* Y-axis labels - moved left */}
               <Typography
                 variant='caption'
                 sx={{
                   position: 'absolute',
-                  right: 'calc(100% - 40px)',
+                  right: 'calc(100% - 15px)', // Moved from 40px to 15px
                   top: 0,
-                  fontSize: '0.55rem',
+                  fontSize: '0.5rem',
                   color: 'text.primary',
                   whiteSpace: 'nowrap',
+                  transform: 'rotate(-45deg)',
+
                 }}
               >
                 30 km
@@ -124,22 +126,23 @@ const LayerCard = ({
                 variant='caption'
                 sx={{
                   position: 'absolute',
-                  right: 'calc(100% - 40px)',
+                  right: 'calc(100% - 15px)', // Moved from 40px to 15px
                   top: 35,
-                  fontSize: '0.55rem',
+                  fontSize: '0.5rem',
                   color: 'text.primary',
                   whiteSpace: 'nowrap',
+                  transform: 'rotate(-45deg)',
                 }}
               >
                 0 km
               </Typography>
 
-              {/* Color blocks that form the X-axis itself */}
+              {/* Color blocks - moved left and made even wider */}
               {[
-                { color: 'red', position: 47, label: '0', width: 22 },
-                { color: 'green', position: 69, label: '0.0127', width: 22 },
-                { color: 'yellow', position: 91, label: '0.254', width: 22 },
-                { color: 'blue', position: 113, label: '1.523', width: 18 },
+                { color: 'red', position: 22, label: '0', width: 60 }, 
+                { color: 'green', position: 82, label: '0.0127', width: 60 },
+                { color: 'yellow', position: 142, label: '0.254', width: 60 },
+                { color: 'blue', position: 202, label: '1.523', width: 50 },
               ].map((item) => (
                 <Box key={item.label}>
                   {/* Color block forming the axis */}
@@ -149,7 +152,7 @@ const LayerCard = ({
                       left: item.position,
                       top: 40,
                       width: item.width,
-                      height: 5, // Thinner blocks
+                      height: 5,
                       backgroundColor: item.color,
                       border: '1px solid rgba(0,0,0,0.2)',
                     }}
@@ -160,9 +163,9 @@ const LayerCard = ({
                     variant='caption'
                     sx={{
                       position: 'absolute',
-                      left: item.position + 1,
+                      left: item.position + 8,
                       top: 60,
-                      fontSize: '0.45rem',
+                      fontSize: '0.65rem',
                       color: 'text.primary',
                       fontWeight: 'medium',
                       transform: 'rotate(-45deg)',
@@ -175,32 +178,14 @@ const LayerCard = ({
                 </Box>
               ))}
               
-              {/* Y-axis label - moved much further left */}
+              {/* X-axis label - repositioned for new layout */}
               <Typography
                 variant='caption'
                 sx={{
                   position: 'absolute',
-                  left: -50,
-                  top: 20,
-                  fontSize: '0.5rem',
-                  color: 'text.primary',
-                  fontWeight: 'bold',
-                  transform: 'rotate(-90deg)',
-                  transformOrigin: 'center',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                Height from ground
-              </Typography>
-              
-              {/* X-axis label */}
-              <Typography
-                variant='caption'
-                sx={{
-                  position: 'absolute',
-                  left: 65,
-                  top: 70,
-                  fontSize: '0.5rem',
+                  left: 80,
+                  top: 73,
+                  fontSize: '0.55rem',
                   color: 'text.primary',
                   fontWeight: 'bold',
                   textAlign: 'center',

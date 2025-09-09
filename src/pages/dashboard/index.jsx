@@ -40,10 +40,10 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   const [selectedDatasetId, setSelectedDatasetId] = useState(null);
   const [layerData, setLayerData] = useState(null);
   const [layerDisplayList, setLayerDisplayList] = useState([]);
-  
+
   // Spatial subset state
   const [spatialSubset, setSpatialSubset] = useState(null);
-  
+
   const {
     selectedStation,
     isLoading,
@@ -82,9 +82,6 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
       allActiveDatasets.current.push(dataset);
     }
 
-    // --- ADDED FOR OPACITY/REMOVE FEATURE ---
-    // This new logic updates our new state array to keep it in sync with the ref.
-    // This is what will cause the RecordDetailView to re-render when a new layer is added.
     setLayerDisplayList((currentList) => {
       const existingDisplayIndex = currentList.findIndex(
         (d) => d.id === dataset.id
@@ -111,7 +108,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
 
   const onRecordSelect = (dataWithMetadata) => {
     let datasetInfo, actualData;
-    
+
     if (dataWithMetadata.datasetInfo && dataWithMetadata.galleryType) {
       datasetInfo = dataWithMetadata.datasetInfo;
       actualData = { ...dataWithMetadata, datasetInfo: undefined };
@@ -122,16 +119,16 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
 
     // Store the layer data for this dataset
     allDatasetLayerData.current.set(datasetInfo.id, actualData);
-    
+
     // Always update selectedRecord and layerData for the newly selected dataset
     setSelectedRecord(datasetInfo);
     setLayerData(actualData);
-    
+
     // If this is a raster dataset, update the selected dataset ID
     if (datasetInfo.type === 'raster') {
       setSelectedDatasetId(datasetInfo.id);
     }
-    
+
     setOpenDrawer(false);
   };
 
@@ -149,17 +146,22 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
 
   // Handle layer reordering (now with dropdown sync)
   const handleLayerReorder = (reorderedLayers) => {
-    console.log('Reordering layers:', reorderedLayers.map(l => l.name));
+    console.log(
+      'Reordering layers:',
+      reorderedLayers.map((l) => l.name)
+    );
     setLayerDisplayList(reorderedLayers);
-    
+
     // Keep the allActiveDatasets ref in sync
     allActiveDatasets.current = reorderedLayers;
 
     // SYNC DROPDOWN: Update selected dataset to the new top raster
-    const newTopRaster = [...reorderedLayers].reverse().find(d => d.type === 'raster');
+    const newTopRaster = [...reorderedLayers]
+      .reverse()
+      .find((d) => d.type === 'raster');
     if (newTopRaster && newTopRaster.id !== selectedDatasetId) {
       setSelectedDatasetId(newTopRaster.id);
-      
+
       // Update the layer data for the new top raster
       const storedLayerData = allDatasetLayerData.current.get(newTopRaster.id);
       if (storedLayerData) {
@@ -172,15 +174,23 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   // Move layer to top when selected from dropdown
   const moveLayerToTop = (datasetId) => {
     setLayerDisplayList((currentList) => {
-      console.log('Layer order before move:', currentList.map(l => l.name));
-      const layerIndex = currentList.findIndex(layer => layer.id === datasetId);
+      console.log(
+        'Layer order before move:',
+        currentList.map((l) => l.name)
+      );
+      const layerIndex = currentList.findIndex(
+        (layer) => layer.id === datasetId
+      );
       if (layerIndex === -1) return currentList;
-      
+
       const reorderedList = [...currentList];
       const [movedLayer] = reorderedList.splice(layerIndex, 1);
       reorderedList.push(movedLayer); // Move to end (top of rendering order)
-      
-      console.log('Layer order after move:', reorderedList.map(l => l.name));
+
+      console.log(
+        'Layer order after move:',
+        reorderedList.map((l) => l.name)
+      );
       return reorderedList;
     });
   };
@@ -192,16 +202,16 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     allActiveDatasets.current = allActiveDatasets.current.filter(
       (item) => item.id !== datasetId
     );
-    
+
     // Remove stored layer data
     allDatasetLayerData.current.delete(datasetId);
-    
+
     if (selectedRecord?.id === datasetId) {
       // If we're removing the currently selected dataset, try to select another raster
       const remainingRasters = layerDisplayList.filter(
         (item) => item.id !== datasetId && item.type === 'raster'
       );
-      
+
       if (remainingRasters.length > 0) {
         const nextRaster = remainingRasters[0];
         setSelectedDatasetId(nextRaster.id);
@@ -267,7 +277,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     const selectedDataset = layerDisplayList.find((d) => d.id === newDatasetId);
     if (selectedDataset) {
       setSelectedRecord(selectedDataset);
-      
+
       // Get the stored layer data for this dataset
       const storedLayerData = allDatasetLayerData.current.get(newDatasetId);
       if (storedLayerData) {
@@ -276,7 +286,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
         // Fallback to the dataset itself if no stored data
         setLayerData(selectedDataset);
       }
-      
+
       // Move this layer to the top of the rendering order
       moveLayerToTop(newDatasetId);
     }
@@ -286,13 +296,17 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   useEffect(() => {
     if (rasterDatasets.length > 0) {
       // Find the last (top-rendering) raster dataset
-      const topRasterDataset = [...rasterDatasets].reverse().find(d => d.type === 'raster');
-      
+      const topRasterDataset = [...rasterDatasets]
+        .reverse()
+        .find((d) => d.type === 'raster');
+
       if (topRasterDataset && selectedDatasetId !== topRasterDataset.id) {
         setSelectedDatasetId(topRasterDataset.id);
-        
+
         // Set the layer data for the top raster
-        const storedLayerData = allDatasetLayerData.current.get(topRasterDataset.id);
+        const storedLayerData = allDatasetLayerData.current.get(
+          topRasterDataset.id
+        );
         if (storedLayerData) {
           setSelectedRecord(topRasterDataset);
           setLayerData(storedLayerData);
@@ -358,10 +372,10 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
             <Stack sx={{ p: 1.5, overflowY: 'auto' }} spacing={1.5}>
               <Title title={TITLE} description={DESCRIPTION} />
               <Search vizItems={[]} onSelectedVizItemSearch={console.log('')} />
-              <FilterByDate vizItems={[]} onFilteredVizItems={[]} />
-              
+              {/* <FilterByDate vizItems={[]} onFilteredVizItems={[]} /> */}
+
               {/* Pass spatial subset props */}
-              <SpatialSubsetManager 
+              <SpatialSubsetManager
                 onSpatialSubsetChange={handleSpatialSubsetChange}
                 spatialSubset={spatialSubset}
               />
