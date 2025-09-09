@@ -358,7 +358,7 @@ export function DeckGlLayerManager({
 
         // Get the base z-index for this dataset based on its position in layerOpacityList
         const datasetIndex = layerOpacityList.findIndex(layer => layer.id === datasetId);
-        const baseZOffset = datasetIndex * 100; // Small offset based on layer order
+        const baseZOffset = datasetIndex * 1000; // Small offset based on layer order
 
         tileUrls.forEach((tileUrl, index) => {
           const lev = levValues[index];
