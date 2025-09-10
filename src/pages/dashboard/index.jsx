@@ -5,6 +5,8 @@ import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { ToggleButtonGroup, ToggleButton } from '@mui/material';
+
 import Stack from '@mui/material/Stack';
 import {
   MainMap,
@@ -32,6 +34,53 @@ import ItemAnimation from '../../components/ui/itemAnimation';
 const TITLE = 'RSIG Dashboard';
 const DESCRIPTION = '';
 
+function TwoDateSwitch({ dates = [], value, onChange }) {
+  // keep only the first two dates; sort ascending
+  const two = Array.from(new Set(dates))
+    .sort((a, b) => new Date(a) - new Date(b))
+    .slice(0, 2);
+
+  if (two.length < 2) return null;
+
+  const format = (d) =>
+    new Date(d).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    });
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        right: 10,
+        bottom: 10,
+        zIndex: 1302,
+        background: 'white',
+        borderRadius: 8,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        padding: 10,
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+        Select date
+      </div>
+      <ToggleButtonGroup
+        exclusive
+        size='small'
+        value={value}
+        onChange={(_, v) => v && onChange(v)}
+      >
+        <ToggleButton value={two[0]}>{format(two[0])}</ToggleButton>
+        <ToggleButton value={two[1]}>{format(two[1])}</ToggleButton>
+      </ToggleButtonGroup>
+    </div>
+  );
+}
+
 export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [openDrawer, setOpenDrawer] = useState(true);
@@ -40,7 +89,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   const [selectedDatasetId, setSelectedDatasetId] = useState(null);
   const [layerData, setLayerData] = useState(null);
   const [layerDisplayList, setLayerDisplayList] = useState([]);
-
+  const [pointCloudDateByDataset, setPointCloudDateByDataset] = useState({});
   // Spatial subset state
   const [spatialSubset, setSpatialSubset] = useState(null);
 
@@ -123,6 +172,15 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     // Always update selectedRecord and layerData for the newly selected dataset
     setSelectedRecord(datasetInfo);
     setLayerData(actualData);
+
+    // Init point-cloud date to first available when a CALIPSO dataset is selected
+    if (datasetInfo.type === 'point-cloud') {
+      const first = (actualData?.available_dates || [])[0];
+      setPointCloudDateByDataset((prev) => ({
+        ...prev,
+        [datasetInfo.id]: first || prev[datasetInfo.id] || null,
+      }));
+    }
 
     // If this is a raster dataset, update the selected dataset ID
     if (datasetInfo.type === 'raster') {
@@ -235,22 +293,6 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   };
 
   useEffect(() => {
-    fetch('/plugins/pointcloud/events.js')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.text();
-      })
-      .then((eventsCode) => {
-        eval(eventsCode);
-      })
-      .catch((err) => {
-        console.error('Failed to load or eval events.js:', err);
-      });
-  }, []);
-
-  useEffect(() => {
     const isRaster =
       layerData?.galleryType === 'raster' || selectedRecord?.type === 'raster';
     if (
@@ -268,7 +310,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     (dataset) => dataset.type === 'raster'
   );
 
-  // Handle dataset change with layer reordering
+  // Handle dataset change (From the itemAnimationDropdown) with layer reordering
   const handleDatasetChange = (event) => {
     const newDatasetId = event.target.value;
     setSelectedDatasetId(newDatasetId);
@@ -424,8 +466,24 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
                 />
               </div>
             )}
+          {selectedRecord?.type === 'point-cloud' &&
+            Array.isArray(layerData?.available_dates) &&
+            layerData.available_dates.length > 0 && (
+              <TwoDateSwitch
+                dates={layerData.available_dates}
+                value={
+                  pointCloudDateByDataset[selectedRecord.id] ||
+                  layerData.available_dates[0]
+                }
+                onChange={(next) => {
+                  setPointCloudDateByDataset((prev) => ({
+                    ...prev,
+                    [selectedRecord.id]: next,
+                  }));
+                }}
+              />
+            )}
 
-          {/* UPDATED: Pass allActiveDatasets for colormap support */}
           <DeckGlLayerManager
             activeLayerUrl={activeLayerUrl}
             updateActiveLayers={updateActiveLayers}
@@ -450,6 +508,13 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
             layerOpacityList={layerDisplayList}
             spatialSubset={spatialSubset}
             allActiveDatasets={layerDisplayList}
+            pointCloudDate={
+              selectedRecord?.type === 'point-cloud'
+                ? pointCloudDateByDataset[selectedRecord.id] ||
+                  layerData?.available_dates?.[0] ||
+                  null
+                : null
+            }
           />
 
           {isVisible && selectedStation && (

@@ -1,60 +1,66 @@
 import React, { useState } from 'react';
-import { 
-  Card, 
-  Typography, 
-  Grid, 
+import {
+  Card,
+  Typography,
+  Grid,
   Box,
   CircularProgress,
   Alert,
   Chip,
   Link,
-  Tooltip
+  Tooltip,
 } from '@mui/material';
 
-import { fetchDatasetData } from '../../../utils/urlBuilder'; 
-import {galleryData} from './datasets';
+import { fetchDatasetData } from '../../../utils/urlBuilder';
+import { galleryData } from './datasets';
 
-export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveDataset }) {
-
+export function DatasetGallery({
+  onLayerSelect,
+  onRecordSelect,
+  updateActiveDataset,
+}) {
   const [loadingDataset, setLoadingDataset] = useState(null);
   const [error, setError] = useState(null);
 
   const allDatasets = Object.keys(galleryData).reduce((acc, category) => {
-    return [...acc, ...galleryData[category].map(dataset => ({
-      ...dataset,
-      category
-    }))];
+    return [
+      ...acc,
+      ...galleryData[category].map((dataset) => ({
+        ...dataset,
+        category,
+      })),
+    ];
   }, []);
 
   const handleDatasetClick = async (dataset) => {
     if (dataset.type === 'netcdf-2d') {
-    const directData = {
-      conceptId: dataset.conceptId || "C2837626477-GES_DISC",
-      datetime: dataset.datetime || "2018-02-12T09:00:00Z", 
-      variable: dataset.variable || "o3",
-      colormap: dataset.colormap || "reds",
-      rescale: dataset.rescale || "0, 4.786979e-10",
-      datasetInfo: dataset,
-      galleryType: dataset.type
-    };
-    
-    if (onRecordSelect) {
-      onRecordSelect(directData);
+      const directData = {
+        conceptId: dataset.conceptId || 'C2837626477-GES_DISC',
+        datetime: dataset.datetime || '2018-02-12T09:00:00Z',
+        variable: dataset.variable || 'o3',
+        colormap: dataset.colormap || 'reds',
+        rescale: dataset.rescale || '0, 4.786979e-10',
+        datasetInfo: dataset,
+        galleryType: dataset.type,
+      };
+
+      if (onRecordSelect) {
+        onRecordSelect(directData);
+      }
+      updateActiveDataset(dataset);
+      return;
     }
-    updateActiveDataset(dataset);
-    return;
-  }
 
     try {
       setLoadingDataset(dataset.id);
       setError(null);
-      
+
       const data = await fetchDatasetData(dataset);
-      
+
       if (onLayerSelect) {
-        onLayerSelect(data.datasetInfo?.url || null);
+        onLayerSelect?.(data.tilesetUrl || data.datasetInfo?.url || null);
       }
-      
+
       if (onRecordSelect) {
         onRecordSelect(data);
       }
@@ -86,13 +92,16 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
   return (
     <Box sx={{ width: '100%', height: '100%', p: 2, overflowY: 'auto' }}>
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity='error' sx={{ mb: 2 }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
-      <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'text.primary' }}>
-         Datasets
+      <Typography
+        variant='h6'
+        sx={{ mb: 2, fontWeight: 600, color: 'text.primary' }}
+      >
+        Datasets
       </Typography>
 
       <Grid container spacing={2}>
@@ -139,7 +148,7 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
               {/* Main Content with Hover Tooltip */}
               <Tooltip
                 title={dataset.description || ''}
-                placement="left"
+                placement='left'
                 componentsProps={{
                   tooltip: {
                     sx: {
@@ -149,27 +158,37 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
                       fontSize: '0.75rem',
                       maxWidth: 300,
                       borderRadius: 2,
-                      p: 1
+                      p: 1,
                     },
                   },
                 }}
               >
-
                 <Box sx={{ p: 1.5 }}>
-                  
                   {/* Top Row: Title + Category Chip */}
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      mb: 1,
+                    }}
+                  >
                     <Typography
-                      variant="subtitle1"
-                      component="h3"
-                      sx={{ fontWeight: 600, fontSize: '1rem', lineHeight: 1.2, flexGrow: 1 }}
+                      variant='subtitle1'
+                      component='h3'
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        lineHeight: 1.2,
+                        flexGrow: 1,
+                      }}
                     >
                       {dataset.name}
                     </Typography>
 
                     <Chip
                       label={dataset.category}
-                      size="small"
+                      size='small'
                       color={getTypeColor(dataset.type)}
                       sx={{ height: 22, fontSize: '0.7rem' }}
                     />
@@ -177,7 +196,7 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
 
                   {/* Metadata List */}
                   <Box
-                    component="ul"
+                    component='ul'
                     sx={{
                       pl: 2,
                       mb: 0,
@@ -186,17 +205,33 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
                       lineHeight: 1.5,
                     }}
                   >
-                    {dataset.units && <li><strong>Unit:</strong> {dataset.units}</li>}
-                    {dataset.start_date && <li><strong>Start Date:</strong> {dataset.start_date}</li>}
-                    {dataset.end_date && <li><strong>End Date:</strong> {dataset.end_date}</li>}
-                    {dataset.time_interval && <li><strong>Time Interval:</strong> {dataset.time_interval}</li>}
+                    {dataset.units && (
+                      <li>
+                        <strong>Unit:</strong> {dataset.units}
+                      </li>
+                    )}
+                    {dataset.start_date && (
+                      <li>
+                        <strong>Start Date:</strong> {dataset.start_date}
+                      </li>
+                    )}
+                    {dataset.end_date && (
+                      <li>
+                        <strong>End Date:</strong> {dataset.end_date}
+                      </li>
+                    )}
+                    {dataset.time_interval && (
+                      <li>
+                        <strong>Time Interval:</strong> {dataset.time_interval}
+                      </li>
+                    )}
                     {dataset.info && (
                       <li>
                         <Link
                           href={dataset.info}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          underline="hover"
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          underline='hover'
                           sx={{ fontSize: '0.75rem', color: 'primary.main' }}
                           onClick={(event) => event.stopPropagation()}
                         >
@@ -205,7 +240,6 @@ export function DatasetGallery({ onLayerSelect, onRecordSelect, updateActiveData
                       </li>
                     )}
                   </Box>
-
                 </Box>
               </Tooltip>
             </Card>

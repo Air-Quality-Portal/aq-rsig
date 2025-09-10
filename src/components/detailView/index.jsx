@@ -73,7 +73,7 @@ const LayerCard = ({
       case 'feature': // For AQS
         return null;
 
-      case 'point-cloud': // CALIPSO - Cartesian coordinate style
+      case 'point-cloud':
         return (
           <Box
             sx={{
@@ -85,7 +85,6 @@ const LayerCard = ({
               padding: 1,
             }}
           >
-            {/* Cartesian coordinate system */}
             <Box
               sx={{
                 position: 'relative',
@@ -93,51 +92,6 @@ const LayerCard = ({
                 height: 70,
               }}
             >
-              {/* Vertical axis (Y-axis) - moved left */}
-              <Box
-                sx={{
-                  position: 'absolute',
-                  left: 20, // Moved from 45 to 20
-                  top: 5,
-                  width: 2,
-                  height: 35,
-                  backgroundColor: '#666',
-                }}
-              />
-              
-              {/* Y-axis labels - moved left */}
-              <Typography
-                variant='caption'
-                sx={{
-                  position: 'absolute',
-                  right: 'calc(100% - 15px)', // Moved from 40px to 15px
-                  top: 0,
-                  fontSize: '0.5rem',
-                  color: 'text.primary',
-                  whiteSpace: 'nowrap',
-                  transform: 'rotate(-45deg)',
-
-                }}
-              >
-                30 km
-              </Typography>
-              
-              <Typography
-                variant='caption'
-                sx={{
-                  position: 'absolute',
-                  right: 'calc(100% - 15px)', // Moved from 40px to 15px
-                  top: 35,
-                  fontSize: '0.5rem',
-                  color: 'text.primary',
-                  whiteSpace: 'nowrap',
-                  transform: 'rotate(-45deg)',
-                }}
-              >
-                0 km
-              </Typography>
-
-              {/* Color blocks - moved left and made even wider */}
               {[
                 { color: 'red', position: 22, label: '0', width: 60 }, 
                 { color: 'green', position: 82, label: '0.0127', width: 60 },
@@ -145,7 +99,6 @@ const LayerCard = ({
                 { color: 'blue', position: 202, label: '1.523', width: 50 },
               ].map((item) => (
                 <Box key={item.label}>
-                  {/* Color block forming the axis */}
                   <Box
                     sx={{
                       position: 'absolute',
@@ -157,8 +110,7 @@ const LayerCard = ({
                       border: '1px solid rgba(0,0,0,0.2)',
                     }}
                   />
-                  
-                  {/* Slanted value labels */}
+
                   <Typography
                     variant='caption'
                     sx={{
@@ -177,8 +129,7 @@ const LayerCard = ({
                   </Typography>
                 </Box>
               ))}
-              
-              {/* X-axis label - repositioned for new layout */}
+
               <Typography
                 variant='caption'
                 sx={{
