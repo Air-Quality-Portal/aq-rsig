@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
-import { Dashboard } from '../dashboard/index.jsx';
+import { DashboardContent } from '../dashboard/index.jsx';
+import { AOIProvider } from '../../context/aoiContext';
 
 export function DashboardContainer() {
   // get the query params
@@ -15,12 +16,14 @@ export function DashboardContainer() {
   const [loadingData, setLoadingData] = useState(false);
 
   return (
-    <Dashboard
-      zoomLocation={zoomLocation}
-      zoomLevel={zoomLevel}
-      setZoomLocation={setZoomLocation}
-      setZoomLevel={setZoomLevel}
-      loadingData={loadingData}
-    />
+    <AOIProvider>
+      <DashboardContent
+        zoomLocation={zoomLocation}
+        zoomLevel={zoomLevel}
+        setZoomLocation={setZoomLocation}
+        setZoomLevel={setZoomLevel}
+        loadingData={loadingData}
+      />
+    </AOIProvider>
   );
 }

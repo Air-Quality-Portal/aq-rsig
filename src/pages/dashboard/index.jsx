@@ -30,6 +30,11 @@ import { useStationChart } from '../../hooks/useStationChart';
 import './index.css';
 import { LineChart } from '../../components/lineChart';
 import ItemAnimation from '../../components/ui/itemAnimation';
+import bbox from '@turf/bbox';
+import { useAOIIntegration } from '../../hooks/useAOIIntegration';
+import { AOIControls } from '../../components/aoi/AOIControls';
+import { AOILayer } from '../../components/aoi/AOILayer';
+import { AnalysisResults } from '../../components/aoi/AnalysisResults';
 
 const TITLE = 'RSIG Dashboard';
 const DESCRIPTION = '';
@@ -81,7 +86,7 @@ function TwoDateSwitch({ dates = [], value, onChange }) {
   );
 }
 
-export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
+export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [openDrawer, setOpenDrawer] = useState(true);
   const [activeLayerUrl, setActiveLayerUrl] = useState(null);
@@ -102,6 +107,19 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     isVisible,
     chartDatasets,
   } = useStationChart();
+
+  const {
+    aoiState,
+    startDrawing,
+    clearAOI,
+    runAnalysis,
+    onDrawComplete,
+    onDrawCancel,
+    clearResults,
+    canRunAnalysis,
+    isAnalyzing,
+    hasResults,
+  } = useAOIIntegration(layerDisplayList);
 
   const [currentRasterFeature, setCurrentRasterFeature] = useState(null);
 
@@ -360,6 +378,24 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     }
   }, [layerDisplayList]);
 
+  // Convert AOI to spatial subset format for compatibility
+  const aoiAsSpatialSubset = React.useMemo(() => {
+    if (!aoiState.selectedAOI) return spatialSubset;
+
+    try {
+      const bounds = bbox(aoiState.selectedAOI);
+      return {
+        west: bounds[0],
+        south: bounds[1],
+        east: bounds[2],
+        north: bounds[3],
+      };
+    } catch (error) {
+      console.warn('Error converting AOI to spatial subset:', error);
+      return spatialSubset;
+    }
+  }, [aoiState.selectedAOI, spatialSubset]);
+
   // Create dropdown component
   const titleDropdown = (
     <div className='mb-3'>
@@ -398,6 +434,12 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
 
       <div id='dashboard-map-container'>
         <MainMap>
+          <AOILayer
+            aoi={aoiState.selectedAOI}
+            isDrawing={aoiState.isDrawing}
+            onDrawComplete={onDrawComplete}
+            onDrawCancel={onDrawCancel}
+          />
           <Paper
             className='title-container'
             sx={{
@@ -415,11 +457,12 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
               <Title title={TITLE} description={DESCRIPTION} />
               {/* <Search vizItems={[]} onSelectedVizItemSearch={console.log('')} /> */}
               {/* <FilterByDate vizItems={[]} onFilteredVizItems={[]} /> */}
-
-              {/* Pass spatial subset props */}
-              <SpatialSubsetManager
-                onSpatialSubsetChange={handleSpatialSubsetChange}
-                spatialSubset={spatialSubset}
+              <AOIControls
+                layerDisplayList={layerDisplayList}
+                onStartDrawing={startDrawing}
+                onClearAOI={clearAOI}
+                onRunAnalysis={runAnalysis}
+                position='embedded' // Changed from 'top-right'
               />
 
               <RecordDetailView
@@ -449,7 +492,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
                 style={{
                   position: 'absolute',
                   right: 10,
-                  bottom: 10,
+                  bottom: hasResults ? '45vh' : '10px',
                   width: 420,
                   zIndex: 1302,
                   background: 'white',
@@ -506,7 +549,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
             onStationClick={handleStationClick}
             visible={true}
             layerOpacityList={layerDisplayList}
-            spatialSubset={spatialSubset}
+            spatialSubset={aoiAsSpatialSubset}
             allActiveDatasets={layerDisplayList}
             pointCloudDate={
               selectedRecord?.type === 'point-cloud'
@@ -521,7 +564,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
             <div
               style={{
                 position: 'absolute',
-                bottom: '10px',
+                bottom: hasResults ? '45vh' : '10px',
                 left: '10px',
                 width: 'calc(100% - 20px)',
                 height: '300px',
@@ -610,6 +653,9 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
           onRecordSelect={onRecordSelect}
           updateActiveDataset={updateActiveDataset}
         />
+        {hasResults && (
+          <AnalysisResults onClose={clearResults} position='bottom' />
+        )}
       </div>
       {loadingData && <LoadingSpinner />}
     </Box>
