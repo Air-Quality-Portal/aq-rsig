@@ -14,6 +14,7 @@ export const galleryData = {
       time_interval: 'daily',
       start_date: '2014-06-01T00:00:00Z',
       end_date: '2014-09-30T00:00:00Z',
+      stops: ['#440154', '#3b528b', '#21908d', '#5dc962', '#fde725']
     },
     {
       id: 'TROPESS_reanalysis_mon_emi_nox_anth',
@@ -29,14 +30,15 @@ export const galleryData = {
       time_interval: 'monthly',
       start_date: '2005-01-01T00:00:00+00:00',
       end_date: '2021-12-31T00:00:00+00:00',
+      stops: ['#fff5f0', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15']
     },
     {
       id: 'JPL-o3-hourly-v1',
-      name: 'JPL GEOS Chem O3',
+      name: 'JPL MOMO Chem O3',
       type: 'raster',
       thumbnailUrl: '/path/to/thumbnail3.jpg',
       description:
-        "This dataset provides hourly atmospheric composition data simulated using the GEOS-Chem model, developed by NASA's Jet Propulsion Laboratory (JPL). It offers insights into various atmospheric constituents, including ozone (O₃), carbon monoxide (CO), nitrogen dioxide (NO₂), sulfur dioxide (SO₂), and fine particulate matter (PM₂.₅).",
+        "This dataset provides hourly atmospheric composition data simulated using the MOMO-Chem model, developed by NASA's Jet Propulsion Laboratory (JPL). It offers insights into various atmospheric constituents, including ozone (O₃), carbon monoxide (CO), nitrogen dioxide (NO₂), sulfur dioxide (SO₂), and fine particulate matter (PM₂.₅).",
       units: 'molecules/cm²',
       colormap: 'rdbu_r',
       rescale_values: [0, 80],
@@ -44,6 +46,7 @@ export const galleryData = {
       time_interval: 'hourly',
       start_date: '2020-07-19 14:00:00+00',
       end_date: '2020-07-31 23:59:59+00',
+      stops: ['#67001f', '#d6604d', '#f7f7f7', '#4393c3', '#053061']
     },
   ],
   insitu: [

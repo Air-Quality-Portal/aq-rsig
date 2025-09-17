@@ -38,42 +38,56 @@ const LayerCard = ({
     setLocalOpacity(newValue);
     onOpacityChange(id, newValue);
   };
+  const formatNumber = (num) => {
+    if (num === 0) return '0';
+    const absNum = Math.abs(num);
+    if (absNum >= 1e6 || absNum <= 1e-3) {
+      return num.toExponential(2); // e.g., 1.23e6
+    }
+    return num.toLocaleString(); // 1,234, 12.34
+  };
 
-  const getStaticLegend = (type) => {
+
+
+  const getStaticLegend = (dataset) => {
+    const { type, stops } = dataset;
     switch (type) {
-      case 'raster': // For OMI (Updated Legend)
+      case 'raster': {
+        // Turn into gradient string with evenly spaced stops
+        const gradient = `linear-gradient(to right, ${stops
+          .map((c, i) => `${c} ${(i / (stops.length - 1)) * 100}%`)
+          .join(', ')})`;
+
         return (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              width: '100%',
-            }}
-          >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+            {/* Gradient bar */}
             <Box
               sx={{
-                flex: 1,
+                width: '100%',
                 height: 12,
-                // New gradient: Blue -> Green -> Yellow -> Red
-                background:
-                  'linear-gradient(to right, #2c7bb6, #abd9e9, #ffffbf, #fdae61, #d7191c)',
+                background: gradient,
                 borderRadius: 1,
               }}
             />
-            <Typography
-              variant='caption'
-              sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
-            >
-              Low to High
-            </Typography>
+
+            {/* Min and Max labels below */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                {formatNumber(dataset.rescale_values[0])}
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                {formatNumber(dataset.rescale_values[1])}
+              </Typography>
+            </Box>
+
           </Box>
         );
+      }
 
       case 'feature': // For AQS
         return null;
 
-      case 'point-cloud':
+      case 'point-cloud': {
         return (
           <Box
             sx={{
@@ -148,34 +162,36 @@ const LayerCard = ({
             </Box>
           </Box>
         );
+      }
 
-      case 'netcdf-2d': // For Tropess
+      case 'netcdf-2d': // For Tropess 
+      {
+        const gradient = `linear-gradient(to right, ${stops
+          .map((c, i) => `${c} ${(i / (stops.length - 1)) * 100}%`)
+          .join(', ')})`;
         return (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              width: '100%',
-            }}
-          >
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+            {/* Gradient bar */}
             <Box
               sx={{
-                flex: 1,
+                width: '100%',
                 height: 12,
-                background: 'linear-gradient(to right, #FFFFFF, #B22222)',
+                background: gradient,
                 borderRadius: 1,
-                border: '1px solid #ccc',
               }}
             />
-            <Typography
-              variant='caption'
-              sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
-            >
-              Low to High
-            </Typography>
+            {/* Min and Max labels below */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                {formatNumber(dataset.rescale_values[0])}
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+                {formatNumber(dataset.rescale_values[1])}
+              </Typography>
+            </Box>
           </Box>
         );
+      }
 
       default:
         return null;
@@ -279,7 +295,7 @@ const LayerCard = ({
               </IconButton>
             </Box>
 
-            <Box sx={{ width: '100%' }}>{getStaticLegend(type)}</Box>
+            <Box sx={{ width: '100%' }}>{getStaticLegend(dataset)}</Box>
 
             <Popover
               open={open}
