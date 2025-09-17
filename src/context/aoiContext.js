@@ -1,4 +1,4 @@
-// contexts/aoiContext.js
+// contexts/aoiContext.js - Updated with time window state
 import React, {
   createContext,
   useContext,
@@ -21,6 +21,7 @@ const initialState = {
   analysisResults: null,
   temporalGroups: [],
   selectedTemporalGroup: null,
+  selectedTimeWindow: null, // New field for time window
 };
 
 // Reducer
@@ -51,12 +52,20 @@ function aoiReducer(state, action) {
         temporalGroups: action.payload,
         selectedTemporalGroup:
           action.payload.length === 1 ? action.payload[0].id : null,
+        selectedTimeWindow: null, // Reset time window when groups change
       };
 
     case 'SELECT_TEMPORAL_GROUP':
       return {
         ...state,
         selectedTemporalGroup: action.payload,
+        selectedTimeWindow: null, // Reset time window when group changes
+      };
+
+    case 'SET_TIME_WINDOW':
+      return {
+        ...state,
+        selectedTimeWindow: action.payload,
       };
 
     case 'SET_ANALYSIS_STATE':
@@ -81,6 +90,7 @@ function aoiReducer(state, action) {
       return {
         ...state,
         analysisResults: null,
+        selectedTimeWindow: null,
         analysisState: {
           status: 'idle',
           message: 'Select an area to start analysis',
@@ -124,6 +134,10 @@ export function AOIProvider({ children }) {
         dispatch({ type: 'SELECT_TEMPORAL_GROUP', payload: groupId });
       },
 
+      setTimeWindow: (timeWindow) => {
+        dispatch({ type: 'SET_TIME_WINDOW', payload: timeWindow });
+      },
+
       setAnalysisState: (analysisState) => {
         dispatch({ type: 'SET_ANALYSIS_STATE', payload: analysisState });
       },
@@ -137,7 +151,7 @@ export function AOIProvider({ children }) {
       },
     }),
     []
-  ); // Empty dependency array - actions never change
+  );
 
   // Memoize the context value to prevent unnecessary re-renders
   const contextValue = useMemo(

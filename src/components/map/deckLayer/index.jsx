@@ -120,6 +120,8 @@ export function DeckGlLayerManager({
   spatialSubset,
   allActiveDatasets = [],
   pointCloudDate, // selected timestamp string for point-cloud
+  aoiGeometry,
+  isDrawingAOI,
 }) {
   const [managedLayers, setManagedLayers] = useState({});
   const mapContext = useMapbox();
@@ -151,6 +153,33 @@ export function DeckGlLayerManager({
     Object.entries(managedLayers).forEach(([id, ls]) => {
       if (!wanted.has(id) && Array.isArray(ls)) ordered.push(...ls);
     });
+
+    // Add AOI layer at the end (on top of everything)
+    if (aoiGeometry && !isDrawingAOI) {
+      const aoiData = {
+        type: 'FeatureCollection',
+        features: [
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: aoiGeometry,
+          },
+        ],
+      };
+
+      const aoiLayer = new GeoJsonLayer({
+        id: 'aoi-visualization',
+        data: aoiData,
+        getFillColor: [255, 107, 53, 80],
+        getLineColor: [255, 107, 53, 255],
+        getLineWidth: 3,
+        pickable: false,
+        stroked: true,
+        filled: true,
+      });
+
+      ordered.push(aoiLayer);
+    }
 
     return ordered;
   };
@@ -561,10 +590,9 @@ export function DeckGlLayerManager({
     layerOpacityList,
     spatialSubset,
     allActiveDatasets,
-    pointCloudDate, // IMPORTANT: rebuild on date change
+    pointCloudDate,
   ]);
 
-  // Live opacity updates without full rebuild
   useEffect(() => {
     setManagedLayers((prev) => {
       const updated = { ...prev };

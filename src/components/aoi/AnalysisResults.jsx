@@ -1,4 +1,4 @@
-// components/aoi/AnalysisResults.jsx
+// components/aoi/AnalysisResults.jsx - Updated to use existing LineChart
 import React, { useMemo } from 'react';
 import {
   Box,
@@ -11,24 +11,16 @@ import {
   Close as CloseIcon,
   Download as DownloadIcon,
 } from '@mui/icons-material';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
 import { useAOI } from '../../context/aoiContext';
+import { ChartProvider } from '../../context/chartContext';
+import { LineChart } from '../../components/lineChart';
 
 export function AnalysisResults({ onClose, position = 'bottom' }) {
   const { state } = useAOI();
   const results = state.analysisResults;
 
-  // Prepare chart data with min, max, mean values from the spatial statistics
-  const chartData = useMemo(() => {
+  // Transform AOI analysis data to match the existing LineChart component format
+  const chartDatasets = useMemo(() => {
     if (!results) return [];
 
     // Check if we have statistics data with temporal breakdown
@@ -36,45 +28,77 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
       const layerStats = results.statistics[0]; // Get first (and likely only) layer
       
       if (layerStats.statistics && layerStats.statistics.length > 0) {
-        // Extract temporal statistics (min/max/mean for each time point)
-        return layerStats.statistics.map((timePointStats, index) => ({
-          datetime: results.chartData[index]?.datetime || `Time ${index}`,
+        // Extract temporal statistics and convert to your LineChart format
+        const timePoints = layerStats.statistics.map((timePointStats, index) => ({
+          datetime: results.chartData[index]?.datetime || timePointStats.datetime || `Time ${index}`,
           min: timePointStats.min,
           max: timePointStats.max,
           mean: timePointStats.mean
         })).filter(point => 
           point.min !== null && point.max !== null && point.mean !== null
         );
+
+        // Create labels array (shared across all datasets)
+        const labels = timePoints.map(point => {
+          const date = new Date(point.datetime);
+          return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+          });
+        });
+
+        const units = layerStats.layerName || 'Value';
+
+        // Return exactly 3 datasets with the same units so they all use one axis
+        return [
+          {
+            parameterName: 'Minimum',
+            data: timePoints.map(point => point.min),
+            labels: labels,
+            units: units
+          },
+          {
+            parameterName: 'Maximum', 
+            data: timePoints.map(point => point.max),
+            labels: labels,
+            units: units // Exact same units
+          },
+          {
+            parameterName: 'Mean',
+            data: timePoints.map(point => point.mean),
+            labels: labels,
+            units: units // Exact same units
+          }
+        ];
       }
     }
 
-    // Fallback: If no temporal statistics, create test data to show the chart works
+    // Fallback: Use chartData if available
     if (results.chartData && results.chartData.length > 0) {
-      return results.chartData.map((point) => {
-        // Use the single value and create some spread around it for demonstration
-        const layerKeys = Object.keys(point).filter(key => key !== 'datetime');
-        if (layerKeys.length > 0) {
-          const baseValue = point[layerKeys[0]];
-          return {
-            datetime: point.datetime,
-            min: baseValue * 0.8,  // 20% below
-            max: baseValue * 1.2,  // 20% above  
-            mean: baseValue
-          };
-        }
-        return null;
-      }).filter(Boolean);
+      const layerKeys = Object.keys(results.chartData[0]).filter(key => key !== 'datetime');
+      
+      // Create labels from datetime
+      const labels = results.chartData.map(point => {
+        const date = new Date(point.datetime);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+      });
+      
+      // Return all available layer keys as separate datasets
+      return layerKeys.map((layerKey) => ({
+        parameterName: `Layer ${layerKey}`,
+        data: results.chartData.map(point => point[layerKey]),
+        labels: labels,
+        units: 'Value' // Same units for all
+      }));
     }
 
     return [];
   }, [results]);
-
-  // Colors for the three lines
-  const colors = {
-    min: '#dc2626',    // Red
-    max: '#16a34a',    // Green  
-    mean: '#2563eb'    // Blue
-  };
 
   const handleDownload = () => {
     if (!results) return;
@@ -100,7 +124,7 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
           bottom: 0,
           left: 0,
           right: 0,
-          height: '50vh',
+          height: '45vh', // Match dashboard height
           zIndex: 1000,
         }
       : {
@@ -121,30 +145,38 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: 'white',
+          border: '1px solid #ccc',
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
         }}
       >
-        {/* Header */}
+        {/* Header - matches dashboard station chart header */}
         <Box
           sx={{
-            p: 2,
-            borderBottom: 1,
-            borderColor: 'divider',
             display: 'flex',
-            alignItems: 'center',
             justifyContent: 'space-between',
-            bgcolor: 'grey.50'
+            alignItems: 'center',
+            padding: '16px 8px',
+            borderBottom: '1px solid #eee',
           }}
         >
           <Box>
-            <Typography variant='h6' sx={{ fontWeight: 600 }}>
-              Time Series Analysis
+            <Typography 
+              variant='h6'
+              sx={{ 
+                margin: 0, 
+                fontSize: '20px', 
+                fontWeight: '600' 
+              }}
+            >
+              Area Analysis Results
             </Typography>
             <Typography variant='body2' color='text.secondary'>
-              Statistical trends over time • {chartData.length} data points
+              Statistical trends over time • {chartDatasets.reduce((acc, dataset) => acc + dataset.data.length, 0)} data points
             </Typography>
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, zIndex: '10000' }}>
             <Tooltip title='Download Data'>
               <IconButton 
                 size='small' 
@@ -164,110 +196,12 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
           </Box>
         </Box>
 
-        {/* Chart */}
-        <Box sx={{ flex: 1, p: 3 }}>
-          {chartData.length > 0 ? (
-            <ResponsiveContainer width='100%' height='100%'>
-              <LineChart 
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 40, bottom: 60 }}
-              >
-                <CartesianGrid 
-                  strokeDasharray='3 3' 
-                  stroke='#e5e7eb'
-                  opacity={0.7}
-                />
-                <XAxis
-                  dataKey='datetime'
-                  tickFormatter={(value) => {
-                    const date = new Date(value);
-                    return date.toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric',
-                      year: '2-digit'
-                    });
-                  }}
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={{ stroke: '#9ca3af' }}
-                  tickLine={{ stroke: '#9ca3af' }}
-                  angle={-45}
-                  textAnchor='end'
-                  height={60}
-                />
-                <YAxis
-                  tickFormatter={(value) => {
-                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-                    if (value < 1) return value.toFixed(3);
-                    return value.toFixed(1);
-                  }}
-                  tick={{ fontSize: 12, fill: '#6b7280' }}
-                  axisLine={{ stroke: '#9ca3af' }}
-                  tickLine={{ stroke: '#9ca3af' }}
-                  width={60}
-                />
-                <RechartsTooltip
-                  labelFormatter={(value) => {
-                    const date = new Date(value);
-                    return date.toLocaleDateString('en-US', { 
-                      weekday: 'short',
-                      year: 'numeric',
-                      month: 'short', 
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    });
-                  }}
-                  formatter={(value, name) => [
-                    typeof value === 'number' ? value.toFixed(4) : value,
-                    name
-                  ]}
-                  contentStyle={{
-                    backgroundColor: 'white',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                  }}
-                />
-                <Legend 
-                  wrapperStyle={{ paddingTop: '20px' }}
-                  iconType='line'
-                />
-                
-                <Line
-                  type='monotone'
-                  dataKey='min'
-                  stroke={colors.min}
-                  strokeWidth={2.5}
-                  dot={false}
-                  connectNulls={false}
-                  name='Minimum'
-                  strokeDasharray='none'
-                />
-                
-                <Line
-                  type='monotone'
-                  dataKey='max'
-                  stroke={colors.max}
-                  strokeWidth={2.5}
-                  dot={false}
-                  connectNulls={false}
-                  name='Maximum'
-                  strokeDasharray='none'
-                />
-                
-                <Line
-                  type='monotone'
-                  dataKey='mean'
-                  stroke={colors.mean}
-                  strokeWidth={3}
-                  dot={false}
-                  connectNulls={false}
-                  name='Mean'
-                  strokeDasharray='none'
-                />
-              </LineChart>
-            </ResponsiveContainer>
+        {/* Chart Container - matches dashboard structure */}
+        <Box sx={{ flex: 1, padding: '16px' }}>
+          {chartDatasets && chartDatasets.length > 0 ? (
+            <ChartProvider>
+              <LineChart datasets={chartDatasets} />
+            </ChartProvider>
           ) : (
             <Box 
               sx={{ 

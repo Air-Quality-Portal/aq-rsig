@@ -1,112 +1,83 @@
 // components/aoi/AOILayer.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import bbox from '@turf/bbox';
 import { useMapbox } from '../../context/mapContext';
+import MapboxDraw from '@mapbox/mapbox-gl-draw';
 
-export function AOILayer({ aoi, isDrawing, onDrawComplete, onDrawCancel }) {
+export function AOILayer({ aoi, isDrawing, onDrawComplete, onDrawCancel, deckRef }) {
   const mapContext = useMapbox();
   const map = mapContext?.map;
+  const drawRef = useRef(null);
+  const isDrawingRef = useRef(false);
 
-  // For now, let's just handle AOI visualization without drawing
-  // We'll add drawing functionality later once the basic system works
-
-  // Add/remove AOI from map
+  // Initialize Mapbox GL Draw (for drawing only)
   useEffect(() => {
     if (!map) return;
 
-    const sourceId = 'aoi-source';
-    const layerId = 'aoi-layer';
-    const fillLayerId = 'aoi-fill-layer';
+    const draw = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: { polygon: true, trash: true },
+      defaultMode: 'simple_select',
+    });
 
-    // Remove existing layers
-    try {
-      if (map.getLayer(layerId)) {
-        map.removeLayer(layerId);
-      }
-      if (map.getLayer(fillLayerId)) {
-        map.removeLayer(fillLayerId);
-      }
-      if (map.getSource(sourceId)) {
-        map.removeSource(sourceId);
-      }
-    } catch (error) {
-      console.warn('Error removing existing AOI layers:', error);
-    }
+    map.addControl(draw, 'top-right');
+    drawRef.current = draw;
 
-    if (aoi) {
-      try {
-        // Add source
-        map.addSource(sourceId, {
-          type: 'geojson',
-          data: aoi
-        });
-
-        // Add fill layer
-        map.addLayer({
-          id: fillLayerId,
-          type: 'fill',
-          source: sourceId,
-          paint: {
-            'fill-color': '#008888',
-            'fill-opacity': 0.2
-          }
-        });
-
-        // Add stroke layer
-        map.addLayer({
-          id: layerId,
-          type: 'line',
-          source: sourceId,
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#008888',
-            'line-width': 3,
-            'line-dasharray': [2, 2]
-          }
-        });
-
-        // Fit bounds to AOI
-        const bounds = bbox(aoi);
-        map.fitBounds(bounds, {
-          padding: 50,
-          duration: 1000
-        });
-      } catch (error) {
-        console.error('Error adding AOI to map:', error);
-      }
-    }
-
-    return () => {
-      // Cleanup on unmount
-      try {
-        if (map.getLayer(layerId)) {
-          map.removeLayer(layerId);
-        }
-        if (map.getLayer(fillLayerId)) {
-          map.removeLayer(fillLayerId);
-        }
-        if (map.getSource(sourceId)) {
-          map.removeSource(sourceId);
-        }
-      } catch (error) {
-        console.warn('Error cleaning up AOI layers:', error);
+    const onDrawCreate = (e) => {
+      const feature = e.features[0];
+      if (feature && feature.geometry.type === 'Polygon') {
+        isDrawingRef.current = false;
+        onDrawComplete?.(feature.geometry);
       }
     };
-  }, [map, aoi]);
 
-  // Show message when drawing is requested (since we disabled drawing for now)
-  useEffect(() => {
-    if (isDrawing) {
-      console.log('Drawing requested - for now, please select a predefined AOI from the dropdown');
-      // Call onDrawCancel to stop the drawing state
-      if (onDrawCancel) {
-        onDrawCancel();
+    const onDrawDelete = () => {
+      onDrawCancel?.();
+    };
+
+    map.on('draw.create', onDrawCreate);
+    map.on('draw.delete', onDrawDelete);
+
+    return () => {
+      map.off('draw.create', onDrawCreate);
+      map.off('draw.delete', onDrawDelete);
+      if (drawRef.current) {
+        map.removeControl(drawRef.current);
+        drawRef.current = null;
       }
+    };
+  }, [map, onDrawComplete, onDrawCancel]);
+
+  // Handle drawing state
+  useEffect(() => {
+    if (!drawRef.current) return;
+
+    if (isDrawing && !isDrawingRef.current) {
+      isDrawingRef.current = true;
+      drawRef.current.deleteAll();
+      drawRef.current.changeMode('draw_polygon');
+    } else if (!isDrawing && isDrawingRef.current) {
+      isDrawingRef.current = false;
+      drawRef.current.changeMode('simple_select');
     }
-  }, [isDrawing, onDrawCancel]);
+  }, [isDrawing]);
+
+  // Clear draw control when AOI is cleared
+  useEffect(() => {
+    if (!aoi && drawRef.current) {
+      drawRef.current.deleteAll();
+    }
+  }, [aoi]);
+
+  // Fit to bounds when AOI changes
+  useEffect(() => {
+    if (!isDrawing && aoi && map) {
+      setTimeout(() => {
+        const bounds = bbox(aoi);
+        map.fitBounds(bounds, { padding: 50, duration: 1000 });
+      }, 100);
+    }
+  }, [aoi, isDrawing, map]);
 
   return null;
 }

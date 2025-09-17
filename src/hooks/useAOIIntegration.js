@@ -1,4 +1,4 @@
-// hooks/useAOIIntegration.js
+// hooks/useAOIIntegration.js - Fixed to pass activeDate and timeWindow
 import { useCallback, useEffect, useMemo } from 'react';
 import { useAOI } from '../context/aoiContext';
 import { analysisService } from '../services/analysisService';
@@ -7,7 +7,8 @@ import {
   getDefaultPredefinedAOIs,
 } from '../utils/temporalGrouping';
 
-export function useAOIIntegration(layerDisplayList = []) {
+export function useAOIIntegration(layerDisplayList = [], options = {}) {
+  const { activeDate, activeLayer } = options;
   const { state, actions } = useAOI();
 
   // Memoize predefined AOIs to prevent recreation
@@ -17,22 +18,6 @@ export function useAOIIntegration(layerDisplayList = []) {
   useEffect(() => {
     actions.setPredefinedAOIs(predefinedAOIs);
   }, []); // Remove actions dependency - only run once
-  useEffect(() => {
-    console.log('=== DEBUGGING LAYER STRUCTURE FOR TEMPORAL GROUPING ===');
-    layerDisplayList.forEach((layer) => {
-      console.log(`\nLayer: ${layer.name}`);
-      console.log('Full layer object:', layer);
-      console.log('Layer keys:', Object.keys(layer));
-      console.log('start_date:', layer.start_date);
-      console.log('end_date:', layer.end_date);
-      console.log('time_interval:', layer.time_interval);
-      console.log('---');
-    });
-
-    const groups = groupLayersByTemporalResolution(layerDisplayList);
-    console.log('Generated temporal groups:', groups);
-    actions.setTemporalGroups(groups);
-  }, [layerDisplayList]);
 
   // Memoize temporal groups to prevent unnecessary recalculation
   const temporalGroups = useMemo(() => {
@@ -71,18 +56,41 @@ export function useAOIIntegration(layerDisplayList = []) {
         status: 'idle',
         message: 'Select an area to start analysis',
       });
+    } else {
+      actions.setAnalysisState({
+        status: 'idle',
+        message: 'Area selected. Choose temporal resolution and run analysis.',
+      });
     }
   }, [state.selectedAOI]); // Only depend on selectedAOI
 
   // Clear AOI
   const clearAOI = useCallback(() => {
     actions.setAOI(null);
+    actions.setDrawing(false); // Also stop drawing
     actions.clearAnalysis();
   }, []); // Remove actions dependency
 
   // Run analysis
   const runAnalysis = useCallback(async () => {
-    if (!state.selectedAOI || !state.selectedTemporalGroup) {
+    if (!state.selectedAOI || !state.selectedTemporalGroup || state.isDrawing) {
+      return;
+    }
+
+    // Check for required parameters
+    if (!activeDate) {
+      actions.setAnalysisState({
+        status: 'error',
+        message: 'Active date is required. Please select a time frame on the map.',
+      });
+      return;
+    }
+
+    if (!state.selectedTimeWindow) {
+      actions.setAnalysisState({
+        status: 'error',
+        message: 'Time window is required. Please select a time window.',
+      });
       return;
     }
 
@@ -113,6 +121,11 @@ export function useAOIIntegration(layerDisplayList = []) {
             message,
             progress,
           });
+        },
+        {
+          activeDate: activeDate,
+          timeWindow: state.selectedTimeWindow,
+          layerName: activeLayer?.name || 'Unknown Layer',
         }
       );
 
@@ -129,7 +142,15 @@ export function useAOIIntegration(layerDisplayList = []) {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }, [state.selectedAOI, state.selectedTemporalGroup, state.temporalGroups]); // Remove actions dependency
+  }, [
+    state.selectedAOI, 
+    state.selectedTemporalGroup, 
+    state.selectedTimeWindow,
+    state.temporalGroups, 
+    state.isDrawing,
+    activeDate,
+    activeLayer
+  ]); // Add activeDate and activeLayer to dependencies
 
   // Clear results but keep AOI
   const clearResults = useCallback(() => {
@@ -158,9 +179,13 @@ export function useAOIIntegration(layerDisplayList = []) {
     canRunAnalysis: Boolean(
       state.selectedAOI &&
         state.selectedTemporalGroup &&
-        state.temporalGroups.length > 0
+        state.selectedTimeWindow &&
+        activeDate &&
+        state.temporalGroups.length > 0 &&
+        !state.isDrawing // Don't allow analysis while drawing
     ),
     isAnalyzing: state.analysisState.status === 'analyzing',
     hasResults: Boolean(state.analysisResults),
+    isDrawing: state.isDrawing,
   };
 }

@@ -1,5 +1,5 @@
 // components/aoi/AOIControls.jsx
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   Box,
   Paper,
@@ -24,12 +24,36 @@ import {
   Timeline as TimelineIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  Stop as StopIcon,
 } from '@mui/icons-material';
 import { useAOI } from '../../context/aoiContext';
-import {
-  groupLayersByTemporalResolution,
-  getTemporalDisplayName,
-} from '../../utils/temporalGrouping';
+import { getTemporalDisplayName } from '../../utils/temporalGrouping';
+
+const getTimeWindowOptions = (resolution) => {
+  switch (resolution) {
+    case 'hourly':
+      return [
+        { value: '6h', label: '6 Hours' },
+        { value: '12h', label: '12 Hours' },
+      ];
+    case 'daily':
+      return [
+        { value: '10d', label: '10 Days' },
+        { value: '30d', label: '30 Days' },
+      ];
+    case 'yearly':
+      return [
+        { value: '1y', label: '1 Year' },
+        { value: '5y', label: '5 Years' },
+        { value: '10y', label: '10 Years' },
+      ];
+    default:
+      return [
+        { value: '10d', label: '10 Days' },
+        { value: '30d', label: '30 Days' },
+      ];
+  }
+};
 
 export function AOIControls({
   layerDisplayList = [],
@@ -37,15 +61,22 @@ export function AOIControls({
   onClearAOI,
   onRunAnalysis,
   position = 'top-left',
+  activeDate = null,
+  activeLayer = null,
 }) {
   const { state, actions } = useAOI();
   const [showExpanded, setShowExpanded] = useState(false);
 
-  // Update temporal groups when layers change
-  //   useEffect(() => {
-  //     const groups = groupLayersByTemporalResolution(layerDisplayList);
-  //     actions.setTemporalGroups(groups);
-  //   }, [layerDisplayList]);
+  const selectedTemporalGroup = useMemo(() => {
+    return state.temporalGroups.find(
+      (g) => g.id === state.selectedTemporalGroup
+    );
+  }, [state.temporalGroups, state.selectedTemporalGroup]);
+
+  const timeWindowOptions = useMemo(() => {
+    if (!selectedTemporalGroup) return [];
+    return getTimeWindowOptions(selectedTemporalGroup.resolution);
+  }, [selectedTemporalGroup]);
 
   const handlePredefinedAOISelect = useCallback(
     (event) => {
@@ -62,37 +93,68 @@ export function AOIControls({
     (event) => {
       const groupId = event.target.value;
       actions.selectTemporalGroup(groupId);
+      // Reset time window when temporal group changes
+      actions.setTimeWindow(null);
+    },
+    [actions]
+  );
+
+  const handleTimeWindowSelect = useCallback(
+    (event) => {
+      const timeWindow = event.target.value;
+      actions.setTimeWindow(timeWindow);
     },
     [actions]
   );
 
   const handleRunAnalysis = useCallback(() => {
-    if (!state.selectedAOI || !state.selectedTemporalGroup) return;
+    if (
+      !state.selectedAOI ||
+      !state.selectedTemporalGroup ||
+      !state.selectedTimeWindow
+    )
+      return;
     onRunAnalysis();
-  }, [state.selectedAOI, state.selectedTemporalGroup, onRunAnalysis]);
+  }, [
+    state.selectedAOI,
+    state.selectedTemporalGroup,
+    state.selectedTimeWindow,
+    onRunAnalysis,
+  ]);
 
   const handleClearAOI = useCallback(() => {
     actions.setAOI(null);
     actions.clearAnalysis();
+    actions.setDrawing(false);
+    actions.setTimeWindow(null);
     if (onClearAOI) onClearAOI();
   }, [actions, onClearAOI]);
+
+  const handleStartDrawing = useCallback(() => {
+    actions.setDrawing(true);
+    if (onStartDrawing) onStartDrawing();
+  }, [actions, onStartDrawing]);
+
+  const handleStopDrawing = useCallback(() => {
+    actions.setDrawing(false);
+  }, [actions]);
 
   const canRunAnalysis =
     state.selectedAOI &&
     state.selectedTemporalGroup &&
+    state.selectedTimeWindow &&
     state.temporalGroups.length > 0;
+
   const hasLayers = layerDisplayList.length > 0;
 
   const getPositionStyles = () => {
-    // For embedded position, don't use absolute positioning
     if (position === 'embedded') {
       return {
-        width: '100%', // Take full width of parent container
-        margin: 0, // Remove margin for embedded layout
+        width: '100%',
+        margin: 0,
       };
     }
 
-    // Keep existing absolute positioning for other positions
     const baseStyles = {
       position: 'absolute',
       zIndex: 1300,
@@ -109,6 +171,33 @@ export function AOIControls({
       default:
         return { ...baseStyles, top: 0, left: 0 };
     }
+  };
+
+  const formatActiveDate = (dateString) => {
+    if (!dateString) return 'No date selected';
+
+    let date; // Add this variable declaration
+
+    // If no timezone info, treat as UTC
+    if (
+      typeof dateString === 'string' &&
+      !dateString.includes('Z') &&
+      !dateString.includes('+') &&
+      !dateString.includes('-')
+    ) {
+      date = new Date(dateString + 'Z'); // Force UTC interpretation
+    } else {
+      date = new Date(dateString);
+    }
+
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    });
   };
 
   return (
@@ -166,22 +255,32 @@ export function AOIControls({
                 1. Select Analysis Area
               </Typography>
 
-              <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                <Tooltip title='Drawing temporarily disabled - use predefined areas below'>
-                  <Button
-                    variant='outlined'
-                    startIcon={<DrawIcon />}
-                    onClick={() =>
-                      alert(
-                        'Drawing temporarily disabled. Please select a predefined area from the dropdown below.'
-                      )
-                    }
-                    size='small'
-                    disabled={true}
-                  >
-                    Draw (Coming Soon)
-                  </Button>
-                </Tooltip>
+              <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                {!state.isDrawing ? (
+                  <Tooltip title='Draw a polygon on the map'>
+                    <Button
+                      variant='outlined'
+                      startIcon={<DrawIcon />}
+                      onClick={handleStartDrawing}
+                      size='small'
+                      disabled={state.analysisState.status === 'analyzing'}
+                    >
+                      Draw Area
+                    </Button>
+                  </Tooltip>
+                ) : (
+                  <Tooltip title='Stop drawing'>
+                    <Button
+                      variant='outlined'
+                      startIcon={<StopIcon />}
+                      onClick={handleStopDrawing}
+                      size='small'
+                      color='warning'
+                    >
+                      Stop Drawing
+                    </Button>
+                  </Tooltip>
+                )}
 
                 {state.selectedAOI && (
                   <Tooltip title='Clear selected area'>
@@ -198,14 +297,30 @@ export function AOIControls({
                 )}
               </Box>
 
+              {state.isDrawing && (
+                <Alert severity='info' sx={{ mb: 1 }}>
+                  <Typography variant='body2'>
+                    <strong>Drawing Mode Active:</strong>
+                    <br />
+                    • Click to add points
+                    <br />
+                    • Click first point to close polygon
+                    <br />• Press Escape to cancel
+                  </Typography>
+                </Alert>
+              )}
+
               {state.predefinedAOIs.length > 0 && (
                 <FormControl fullWidth size='small' sx={{ mb: 1 }}>
-                  <InputLabel>Predefined Areas</InputLabel>
+                  <InputLabel>Or Choose Predefined Area</InputLabel>
                   <Select
-                    label='Predefined Areas'
+                    label='Or Choose Predefined Area'
                     value=''
                     onChange={handlePredefinedAOISelect}
-                    disabled={state.analysisState.status === 'analyzing'}
+                    disabled={
+                      state.analysisState.status === 'analyzing' ||
+                      state.isDrawing
+                    }
                   >
                     {state.predefinedAOIs.map((aoi) => (
                       <MenuItem key={aoi.id} value={aoi.id}>
@@ -238,40 +353,34 @@ export function AOIControls({
                   2. Select Data Resolution
                 </Typography>
 
-                {state.temporalGroups.length === 1 ? (
-                  <Chip
-                    icon={<TimelineIcon />}
-                    label={`${getTemporalDisplayName(state.temporalGroups[0].resolution)} (${state.temporalGroups[0].count} layers)`}
-                    color='primary'
-                    sx={{ mb: 1 }}
-                  />
-                ) : (
-                  <FormControl fullWidth size='small'>
-                    <InputLabel>Data Resolution</InputLabel>
-                    <Select
-                      value={state.selectedTemporalGroup || ''}
-                      label='Data Resolution'
-                      onChange={handleTemporalGroupSelect}
-                      disabled={state.analysisState.status === 'analyzing'}
-                    >
-                      {state.temporalGroups.map((group) => (
-                        <MenuItem key={group.id} value={group.id}>
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 1,
-                            }}
-                          >
-                            <TimelineIcon fontSize='small' />
-                            {getTemporalDisplayName(group.resolution)} (
-                            {group.count} layers)
-                          </Box>
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
+                <FormControl fullWidth size='small' sx={{ mb: 1 }}>
+                  <InputLabel>Data Resolution</InputLabel>
+                  <Select
+                    value={state.selectedTemporalGroup || ''}
+                    label='Data Resolution'
+                    onChange={handleTemporalGroupSelect}
+                    disabled={
+                      state.analysisState.status === 'analyzing' ||
+                      state.isDrawing
+                    }
+                  >
+                    {state.temporalGroups.map((group) => (
+                      <MenuItem key={group.id} value={group.id}>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1,
+                          }}
+                        >
+                          <TimelineIcon fontSize='small' />
+                          {getTemporalDisplayName(group.resolution)} (
+                          {group.count} layers)
+                        </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
 
                 {state.selectedTemporalGroup && (
                   <Box sx={{ mt: 1 }}>
@@ -282,6 +391,52 @@ export function AOIControls({
                         ?.layers.map((l) => l.name)
                         .join(', ')}
                     </Typography>
+                  </Box>
+                )}
+              </Box>
+            )}
+
+            {/* Time Window Selection */}
+            {state.selectedTemporalGroup && timeWindowOptions.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography variant='subtitle2' gutterBottom>
+                  3. Select Time Window
+                </Typography>
+
+                <FormControl fullWidth size='small' sx={{ mb: 1 }}>
+                  <InputLabel>Time Window</InputLabel>
+                  <Select
+                    value={state.selectedTimeWindow || ''}
+                    label='Time Window'
+                    onChange={handleTimeWindowSelect}
+                    disabled={
+                      state.analysisState.status === 'analyzing' ||
+                      state.isDrawing
+                    }
+                  >
+                    {timeWindowOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                {activeDate && (
+                  <Box
+                    sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}
+                  >
+                    <Typography variant='caption' color='text.secondary'>
+                      Analysis will start from active date:
+                    </Typography>
+                    <Typography variant='body2' fontWeight='medium'>
+                      {formatActiveDate(activeDate)}
+                    </Typography>
+                    {activeLayer && (
+                      <Typography variant='caption' color='text.secondary'>
+                        Layer: {activeLayer.name}
+                      </Typography>
+                    )}
                   </Box>
                 )}
               </Box>
@@ -332,7 +487,11 @@ export function AOIControls({
             >
               {state.analysisState.status === 'analyzing'
                 ? 'Analyzing...'
-                : 'Run Analysis'}
+                : state.isDrawing
+                  ? 'Complete drawing first'
+                  : !state.selectedTimeWindow
+                    ? 'Select time window'
+                    : 'Run Analysis'}
             </Button>
 
             {/* Expanded Details */}

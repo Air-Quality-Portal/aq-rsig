@@ -1,5 +1,5 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
@@ -108,6 +108,9 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
     chartDatasets,
   } = useStationChart();
 
+  const [currentActiveDate, setCurrentActiveDate] = useState(null);
+  const [currentActiveFeature, setCurrentActiveFeature] = useState(null);
+
   const {
     aoiState,
     startDrawing,
@@ -119,7 +122,10 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
     canRunAnalysis,
     isAnalyzing,
     hasResults,
-  } = useAOIIntegration(layerDisplayList);
+  } = useAOIIntegration(layerDisplayList, {
+    activeDate: currentActiveDate,
+    activeLayer: selectedRecord,
+  });
 
   const [currentRasterFeature, setCurrentRasterFeature] = useState(null);
 
@@ -167,6 +173,21 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
       return [...currentList, { ...dataset, opacity: 100 }];
     });
   };
+
+  const handleFrameChange = useCallback((feature) => {
+    setCurrentRasterFeature(feature);
+
+    // Extract and set the active date for AOI analysis
+    const activeDate =
+      feature?.properties?.start_datetime ||
+      feature?.properties?.datetime ||
+      feature?.properties?.date;
+    if (activeDate) {
+      // Store the original string, don't convert to Date yet
+      setCurrentActiveDate(activeDate); // Keep as string
+      setCurrentActiveFeature(feature);
+    }
+  }, []);
 
   const allActiveLayers = useRef([]);
   const updateActiveLayers = (layers) => {
@@ -462,7 +483,9 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                 onStartDrawing={startDrawing}
                 onClearAOI={clearAOI}
                 onRunAnalysis={runAnalysis}
-                position='embedded' // Changed from 'top-right'
+                position='embedded'
+                activeDate={currentActiveDate}
+                activeLayer={selectedRecord}
               />
 
               <RecordDetailView
@@ -476,7 +499,6 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
               />
             </Stack>
           </Paper>
-
           <MapControls
             openDrawer={openDrawer}
             setOpenDrawer={setOpenDrawer}
@@ -502,7 +524,7 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
               >
                 <ItemAnimation
                   items={layerData.features}
-                  onFrameChange={(feature) => setCurrentRasterFeature(feature)}
+                  onFrameChange={handleFrameChange} // Use updated handler
                   title={titleDropdown}
                   initialAutoPlay={false}
                   speedMs={700}
@@ -526,7 +548,7 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                 }}
               />
             )}
-
+          // In your dashboard component, update the DeckGlLayerManager props:
           <DeckGlLayerManager
             activeLayerUrl={activeLayerUrl}
             updateActiveLayers={updateActiveLayers}
@@ -558,8 +580,10 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                   null
                 : null
             }
+            // Add these new props:
+            aoiGeometry={aoiState.selectedAOI}
+            isDrawingAOI={aoiState.isDrawing}
           />
-
           {isVisible && selectedStation && (
             <div
               style={{
