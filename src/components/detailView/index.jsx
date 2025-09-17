@@ -175,7 +175,7 @@ const LayerCard = ({
                 textAlign: 'center',
               }}
             >
-              Backscatter (km⁻¹ sr⁻¹)
+              Backscatter (km⁻¹ sr⁻¹) : 0-31 KM Altitude
             </Typography>
           </Box>
         );
