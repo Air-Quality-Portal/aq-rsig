@@ -11,7 +11,7 @@ export const galleryData = {
       rescale_values: [0.1e15, 6.4e15],
       colormap: 'viridis',
       info: 'https://amt.copernicus.org/articles/14/455/2021/',
-      time_interval: 'daily',
+      time_interval: 'Daily',
       start_date: '2014-06-01T00:00:00Z',
       end_date: '2014-09-30T00:00:00Z',
       stops: ['#440154', '#3b528b', '#21908d', '#5dc962', '#fde725']

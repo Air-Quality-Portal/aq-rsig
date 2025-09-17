@@ -199,12 +199,18 @@ function detectTemporalResolution(layer) {
     return layer.temporalResolution.toLowerCase();
   }
 
+  // Check time_interval field (from gallery data)
+  if (layer.time_interval) {
+    return layer.time_interval.toLowerCase();
+  }
+
   // Check layer metadata for temporal information
   if (layer.metadata) {
     const meta = layer.metadata;
 
     if (meta.temporal_resolution) return meta.temporal_resolution.toLowerCase();
     if (meta.temporalResolution) return meta.temporalResolution.toLowerCase();
+    if (meta.time_interval) return meta.time_interval.toLowerCase();
     if (meta.update_frequency) return meta.update_frequency.toLowerCase();
     if (meta.frequency) return meta.frequency.toLowerCase();
   }
