@@ -29,28 +29,31 @@ import { useAOI } from '../../context/aoiContext';
 import { getTemporalDisplayName } from '../../utils/temporalGrouping';
 
 const getTimeWindowOptions = (resolution) => {
+  // A helper function to generate a continuous array of options
+  const generateRange = (start, end, unitSingular, unitPlural, suffix) => {
+    const options = [];
+    for (let i = start; i <= end; i++) {
+      options.push({
+        value: `${i}${suffix}`,
+        label: `${i} ${i === 1 ? unitSingular : unitPlural}`,
+      });
+    }
+    return options;
+  };
+
   switch (resolution) {
     case 'hourly':
-      return [
-        { value: '6h', label: '6h' },
-        { value: '12h', label: '12h' },
-      ];
+      // Generates 6h, 7h, 8h... up to 12h
+      return generateRange(6, 12, 'hour', 'hours', 'h');
     case 'daily':
-      return [
-        { value: '10d', label: '10 days' },
-        { value: '30d', label: '30 days' },
-      ];
+      // Generates 10 days, 11 days... up to 30 days
+      return generateRange(10, 30, 'day', 'days', 'd');
     case 'yearly':
-      return [
-        { value: '1y', label: '1 year' },
-        { value: '5y', label: '5 years' },
-        { value: '10y', label: '10 years' },
-      ];
+      // Generates 1 year, 2 years... up to 10 years
+      return generateRange(1, 10, 'year', 'years', 'y');
     default:
-      return [
-        { value: '10d', label: '10 days' },
-        { value: '30d', label: '30 days' },
-      ];
+      // Default to the daily range
+      return generateRange(10, 30, 'day', 'days', 'd');
   }
 };
 
