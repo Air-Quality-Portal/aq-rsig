@@ -13,6 +13,16 @@ import Slider from '@mui/material/Slider';
 import Popover from '@mui/material/Popover';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
+const extractPressureLevel = (layerId) => {
+  const match = layerId?.match(/-lev-(\d+)$/);
+  return match ? parseInt(match[1]) : null;
+};
+
+const getShortDatasetName = (datasetName) => {
+  const firstWord = datasetName.split(' ')[0];
+  return firstWord || datasetName;
+};
+
 const LayerCard = ({
   dataset,
   index,
@@ -39,107 +49,176 @@ const LayerCard = ({
     onOpacityChange(id, newValue);
   };
 
-  const getStaticLegend = (type) => {
+  const formatNumber = (num) => {
+    if (num === 0) return '0';
+    const absNum = Math.abs(num);
+    if (absNum >= 1e6 || absNum <= 1e-3) {
+      return num.toExponential(2);
+    }
+    return num.toLocaleString();
+  };
+
+  const getStaticLegend = (dataset) => {
+    const { type, stops } = dataset;
     switch (type) {
-      case 'raster': // For OMI (Updated Legend)
+      case 'raster': {
+        const gradient = `linear-gradient(to right, ${stops
+          .map((c, i) => `${c} ${(i / (stops.length - 1)) * 100}%`)
+          .join(', ')})`;
+
         return (
           <Box
             sx={{
               display: 'flex',
-              alignItems: 'center',
-              gap: 1,
+              flexDirection: 'column',
+              gap: 0.5,
               width: '100%',
             }}
           >
             <Box
               sx={{
-                flex: 1,
+                width: '100%',
                 height: 12,
-                // New gradient: Blue -> Green -> Yellow -> Red
-                background:
-                  'linear-gradient(to right, #2c7bb6, #abd9e9, #ffffbf, #fdae61, #d7191c)',
+                background: gradient,
                 borderRadius: 1,
               }}
             />
-            <Typography
-              variant='caption'
-              sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
-            >
-              Low to High
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
+                {formatNumber(dataset.rescale_values[0])}
+              </Typography>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
+                {formatNumber(dataset.rescale_values[1])}
+              </Typography>
+            </Box>
           </Box>
         );
+      }
 
-      case 'feature': // For AQS
+      case 'feature':
         return null;
 
-      case 'point-cloud':
-        const legendItems = [
-          { color: 'red', label: '0 - 500' },
-          { color: 'green', label: '500 - 10,000' },
-          { color: 'yellow', label: '10,000 - 60,000' },
-          { color: 'blue', label: '> 60,000' },
-        ];
+      case 'point-cloud': {
         return (
           <Box
             sx={{
               display: 'flex',
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              gap: 0.2,
-            }}
-          >
-            {legendItems.map((item) => (
-              <Box
-                key={item.label}
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.1 }}
-              >
-                <Box
-                  sx={{
-                    width: 12,
-                    height: 12,
-                    backgroundColor: item.color,
-                    borderRadius: '2px',
-                  }}
-                />
-                <Typography
-                  variant='caption'
-                  sx={{ fontSize: '0.5rem', color: 'text.secondary' }}
-                >
-                  {item.label}
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-        );
-
-      case 'netcdf-2d': // For Tropess
-        return (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
+              flexDirection: 'column',
+              gap: 0.5,
               width: '100%',
             }}
           >
             <Box
               sx={{
-                flex: 1,
+                display: 'flex',
+                width: '100%',
                 height: 12,
-                background: 'linear-gradient(to right, #FFFFFF, #B22222)',
                 borderRadius: 1,
-                border: '1px solid #ccc',
+                overflow: 'hidden',
               }}
-            />
+            >
+              {[
+                { color: 'red', width: '25%' },
+                { color: 'green', width: '25%' },
+                { color: 'yellow', width: '25%' },
+                { color: 'blue', width: '25%' },
+              ].map((item, index) => (
+                <Box
+                  key={index}
+                  sx={{
+                    width: item.width,
+                    height: '100%',
+                    backgroundColor: item.color,
+                  }}
+                />
+              ))}
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
+                0
+              </Typography>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
+                0.0127
+              </Typography>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
+                0.254
+              </Typography>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
+                1.523
+              </Typography>
+            </Box>
+
             <Typography
               variant='caption'
-              sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              sx={{
+                fontSize: '0.65rem',
+                color: 'text.secondary',
+                textAlign: 'center',
+              }}
             >
-              Low to High
+              Backscatter (km⁻¹ sr⁻¹) : 0-31 KM Altitude
             </Typography>
           </Box>
         );
+      }
+
+      case 'netcdf-2d': {
+        const gradient = `linear-gradient(to right, ${stops
+          .map((c, i) => `${c} ${(i / (stops.length - 1)) * 100}%`)
+          .join(', ')})`;
+        return (
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.5,
+              width: '100%',
+            }}
+          >
+            <Box
+              sx={{
+                width: '100%',
+                height: 12,
+                background: gradient,
+                borderRadius: 1,
+              }}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
+                {formatNumber(dataset.rescale_values[0])}
+              </Typography>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
+                {formatNumber(dataset.rescale_values[1])}
+              </Typography>
+            </Box>
+          </Box>
+        );
+      }
 
       default:
         return null;
@@ -166,7 +245,9 @@ const LayerCard = ({
           }}
         >
           <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <Box
+              sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}
+            >
               <Box
                 {...provided.dragHandleProps}
                 sx={{
@@ -175,6 +256,7 @@ const LayerCard = ({
                   cursor: 'grab',
                   color: 'text.secondary',
                   '&:active': { cursor: 'grabbing' },
+                  mt: 0.25,
                 }}
               >
                 <DragIndicatorIcon fontSize='small' />
@@ -183,44 +265,41 @@ const LayerCard = ({
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography
                   variant='body2'
-                  sx={{ fontWeight: 'medium' }}
-                  noWrap
+                  sx={{
+                    fontWeight: 'medium',
+                    lineHeight: 1.3,
+                  }}
                 >
                   {name}
-                  {/* Show indicator for the top raster dataset */}
-                  {type === 'raster' && topRasterDataset && dataset.id === topRasterDataset.id && (
-                    <Typography component="span" sx={{ ml: 1, fontSize: '0.7rem', color: 'primary.main', fontWeight: 'bold' }}>
-                      (Active)
-                    </Typography>
-                  )}
-                </Typography>
-                <Typography
-                  variant='caption'
-                  sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
-                >
-                  {type} • Position {index + 1} {isTopLayer ? '(Top)' : ''}
+                  {type === 'raster' &&
+                    topRasterDataset &&
+                    dataset.id === topRasterDataset.id && (
+                      <Typography
+                        component='span'
+                        sx={{
+                          ml: 1,
+                          fontSize: '0.7rem',
+                          color: 'primary.main',
+                          fontWeight: 'bold',
+                        }}
+                      >
+                        (Active)
+                      </Typography>
+                    )}
                 </Typography>
               </Box>
 
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <IconButton
-                  size='small'
-                  onClick={handleOpacityClick}
-                  sx={{
-                    p: 0.5,
-                    color: 'text.secondary',
-                    '&:hover': { color: 'primary.main' },
-                  }}
-                >
-                  <OpacityIcon fontSize='small' />
-                </IconButton>
-                <Typography
-                  variant='caption'
-                  sx={{ fontSize: '0.75rem', minWidth: '35px' }}
-                >
-                  {localOpacity}%
-                </Typography>
-              </Box>
+              <IconButton
+                size='small'
+                onClick={handleOpacityClick}
+                sx={{
+                  p: 0.5,
+                  color: 'text.secondary',
+                  '&:hover': { color: 'primary.main' },
+                }}
+              >
+                <OpacityIcon fontSize='small' />
+              </IconButton>
 
               <IconButton
                 size='small'
@@ -238,7 +317,7 @@ const LayerCard = ({
               </IconButton>
             </Box>
 
-            <Box sx={{ width: '100%' }}>{getStaticLegend(type)}</Box>
+            <Box sx={{ width: '100%' }}>{getStaticLegend(dataset)}</Box>
 
             <Popover
               open={open}
@@ -279,7 +358,6 @@ export function RecordDetailView({
   layers,
   allActiveDatasets = [],
   allActiveLayers,
-  onLayersChange,
   onLayerOpacityChange,
   onLayerRemove,
   onLayerReorder,
@@ -287,38 +365,30 @@ export function RecordDetailView({
 }) {
   const [isDragging, setIsDragging] = useState(false);
 
-  // Find the top-rendering raster dataset (last raster in the array)
-  const topRasterDataset = [...allActiveDatasets].reverse().find(d => d.type === 'raster');
+  const topRasterDataset = [...allActiveDatasets]
+    .reverse()
+    .find((d) => d.type === 'raster');
 
   const handleDragStart = () => {
     setIsDragging(true);
   };
 
-  // Simplified drag end handler that works with the reversed visual array
   const handleDragEnd = (result) => {
     setIsDragging(false);
 
-    if (!result.destination) {
+    if (
+      !result.destination ||
+      result.destination.index === result.source.index
+    ) {
       return;
     }
 
-    // If dropped in the same position
-    if (result.destination.index === result.source.index) {
-      return;
-    }
-
-    // Handle reordering with reversed visual array
     if (onLayerReorder) {
-      // Work with the reversed array for visual consistency
       const reversedDatasets = [...allActiveDatasets].reverse();
       const reorderedItems = Array.from(reversedDatasets);
       const [reorderedItem] = reorderedItems.splice(result.source.index, 1);
       reorderedItems.splice(result.destination.index, 0, reorderedItem);
-
-      // Convert back to original order for the backend
       const finalOrder = reorderedItems.reverse();
-
-      console.log('Drag reorder from RecordDetailView:', finalOrder.map(item => item.name));
       onLayerReorder(finalOrder);
     }
   };
@@ -378,9 +448,7 @@ export function RecordDetailView({
           Active Datasets
         </Typography>
         <Typography variant='caption' color='text.secondary'>
-          {allActiveDatasets.length}{' '}
-          {allActiveDatasets.length === 1 ? 'dataset' : 'datasets'} • Drag to
-          reorder • Top items render on top
+          Drag to reorder
         </Typography>
       </Box>
 
@@ -397,45 +465,48 @@ export function RecordDetailView({
                 pt: 1,
               }}
             >
-              {console.log('AllActive Layers:::', allActiveLayers)}
-              {console.log('AllActive Datasets:::', allActiveDatasets)}
-
-              {/* Handle datasets with multiple layers (like Tropess) vs single layer datasets */}
               {[...allActiveDatasets].reverse().map((dataset, datasetIndex) => {
                 const layersForDataset = allActiveLayers[dataset.id];
-                
-                // If dataset has multiple layers (like Tropess), show each layer separately
-                if (layersForDataset && Array.isArray(layersForDataset) && layersForDataset.length > 1) {
-                  return layersForDataset.map((layer, layerIndex) => (
-                    <LayerCard
-                      key={`${dataset.id}-${layer.id || layerIndex}`}
-                      dataset={{
-                        ...dataset,
-                        name: `${dataset.name} (Level ${layerIndex + 1})`, // Add level indicator
-                        layerId: layer.id // Store the individual layer ID
-                      }}
-                      index={datasetIndex * 10 + layerIndex} // Unique index for drag operations
-                      onOpacityChange={handleOpacityChange}
-                      onRemove={(id) => {
-                        // For multi-layer datasets, remove the whole dataset when any layer is removed
-                        handleRemove(dataset.id);
-                      }}
-                      isDragging={isDragging}
-                      isTopLayer={datasetIndex === 0 && layerIndex === 0} // Top dataset's first layer
-                      topRasterDataset={topRasterDataset}
-                    />
-                  ));
+
+                if (
+                  layersForDataset &&
+                  Array.isArray(layersForDataset) &&
+                  layersForDataset.length > 1
+                ) {
+                  return layersForDataset.map((layer, layerIndex) => {
+                    const pressureLevel = extractPressureLevel(layer.id);
+                    const layerName =
+                      dataset.type === 'netcdf-2d' && pressureLevel
+                        ? `${getShortDatasetName(dataset.name)} - ${pressureLevel}`
+                        : `${dataset.name} (Level ${layerIndex + 1})`;
+
+                    return (
+                      <LayerCard
+                        key={`${dataset.id}-${layer.id || layerIndex}`}
+                        dataset={{
+                          ...dataset,
+                          name: layerName,
+                          layerId: layer.id,
+                        }}
+                        index={datasetIndex * 10 + layerIndex}
+                        onOpacityChange={handleOpacityChange}
+                        onRemove={() => handleRemove(dataset.id)}
+                        isDragging={isDragging}
+                        isTopLayer={datasetIndex === 0 && layerIndex === 0}
+                        topRasterDataset={topRasterDataset}
+                      />
+                    );
+                  });
                 } else {
-                  // Single layer dataset - show as before
                   return (
                     <LayerCard
                       key={dataset.id}
                       dataset={dataset}
-                      index={datasetIndex} // Use dataset index for drag operations
+                      index={datasetIndex}
                       onOpacityChange={handleOpacityChange}
                       onRemove={handleRemove}
                       isDragging={isDragging}
-                      isTopLayer={datasetIndex === 0} // Top of the visual list
+                      isTopLayer={datasetIndex === 0}
                       topRasterDataset={topRasterDataset}
                     />
                   );

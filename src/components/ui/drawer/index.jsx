@@ -8,7 +8,6 @@ import IconButton from '@mui/material/IconButton';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import Divider from '@mui/material/Divider';
 
-// The DatasetGallery is imported directly, as per your structure.
 import { DatasetGallery } from '../datasetGallery';
 
 import { useEffect, useState } from 'react';
@@ -44,7 +43,6 @@ const DrawerHeader = styledmui('div')(({ theme }) => ({
   justifyContent: 'flex-start',
 }));
 
-
 export function PersistentDrawerRight({
   open,
   setOpen,
@@ -59,7 +57,7 @@ export function PersistentDrawerRight({
   handleSelectedVizItems,
   hoveredVizItemId,
   setHoveredVizItemId,
-  children
+  children,
 }) {
   const theme = useTheme();
 
@@ -80,7 +78,6 @@ export function PersistentDrawerRight({
       return;
     }
   }, [vizItemMetaData, selectedVizItems]);
-
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -110,19 +107,18 @@ export function PersistentDrawerRight({
           <IconButton onClick={handleDrawerClose}>
             <ChevronRightIcon />
           </IconButton>
-          <Typography variant="h6" sx={{ pl: 1 }}>
+          <Typography variant='h6' sx={{ pl: 1 }}>
             Data Layers
           </Typography>
         </DrawerHeader>
         <Divider />
 
-          <DatasetGallery
-            onLayerSelect={onLayerSelect}
-            onRecordSelect={onRecordSelect}
-            updateActiveDataset={updateActiveDataset}
-          />
+        <DatasetGallery
+          onLayerSelect={onLayerSelect}
+          onRecordSelect={onRecordSelect}
+          updateActiveDataset={updateActiveDataset}
+        />
       </Drawer>
-
     </Box>
   );
 }

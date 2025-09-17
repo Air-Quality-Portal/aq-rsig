@@ -1,3 +1,4 @@
+// Updated LineChart component - backward compatible with smart axis detection
 import { useEffect } from 'react';
 import { useChart } from '../../context/chartContext';
 
@@ -17,12 +18,21 @@ export const LineChart = ({ datasets = [] }) => {
       return;
     }
 
-    const chartJsDatasets = datasets.slice(0, 2).map((dataset, index) => ({
+    // Smart axis detection: check if all datasets have the same units
+    const allSameUnits = datasets.length > 0 && 
+      datasets.every(ds => ds.units === datasets[0].units);
+
+    // For backward compatibility: limit to 2 datasets for dual-axis mode
+    // For same units: allow all datasets on single axis
+    const datasetsToShow = allSameUnits ? datasets : datasets.slice(0, 2);
+
+    const chartJsDatasets = datasetsToShow.map((dataset, index) => ({
       label: dataset.parameterName,
       data: dataset.data,
       borderColor: lineColors[index % lineColors.length],
       backgroundColor: `${lineColors[index % lineColors.length]}20`,
-      yAxisID: index === 0 ? 'yLeft' : 'yRight',
+      // Smart axis assignment
+      yAxisID: allSameUnits ? 'yLeft' : (index === 0 ? 'yLeft' : 'yRight'),
     }));
     
     const chartJsScales = {
@@ -44,7 +54,8 @@ export const LineChart = ({ datasets = [] }) => {
       }
     };
 
-    if (datasets.length > 1) {
+    // Only create right axis for different units (station data)
+    if (!allSameUnits && datasetsToShow.length > 1) {
       chartJsScales.yRight = {
         type: 'linear',
         display: true,

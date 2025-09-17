@@ -1,10 +1,12 @@
 /* eslint-disable no-unused-vars */
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { ToggleButtonGroup, ToggleButton } from '@mui/material';
+
 import Stack from '@mui/material/Stack';
 import {
   MainMap,
@@ -28,11 +30,62 @@ import { useStationChart } from '../../hooks/useStationChart';
 import './index.css';
 import { LineChart } from '../../components/lineChart';
 import ItemAnimation from '../../components/ui/itemAnimation';
+import bbox from '@turf/bbox';
+import { useAOIIntegration } from '../../hooks/useAOIIntegration';
+import { AOIControls } from '../../components/aoi/AOIControls';
+import { AOILayer } from '../../components/aoi/AOILayer';
+import { AnalysisResults } from '../../components/aoi/AnalysisResults';
 
-const TITLE = 'Air Quality Dashboard';
+const TITLE = 'RSIG Dashboard';
 const DESCRIPTION = '';
 
-export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
+function TwoDateSwitch({ dates = [], value, onChange }) {
+  const two = Array.from(new Set(dates))
+    .sort((a, b) => new Date(a) - new Date(b))
+    .slice(0, 2);
+
+  if (two.length < 2) return null;
+
+  const format = (d) =>
+    new Date(d).toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZoneName: 'short',
+    });
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        right: 10,
+        bottom: 10,
+        zIndex: 1302,
+        background: 'white',
+        borderRadius: 8,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        padding: 10,
+      }}
+    >
+      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+        Select date
+      </div>
+      <ToggleButtonGroup
+        exclusive
+        size='small'
+        value={value}
+        onChange={(_, v) => v && onChange(v)}
+      >
+        <ToggleButton value={two[0]}>{format(two[0])}</ToggleButton>
+        <ToggleButton value={two[1]}>{format(two[1])}</ToggleButton>
+      </ToggleButtonGroup>
+    </div>
+  );
+}
+
+export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [openDrawer, setOpenDrawer] = useState(true);
   const [activeLayerUrl, setActiveLayerUrl] = useState(null);
@@ -40,6 +93,13 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
   const [selectedDatasetId, setSelectedDatasetId] = useState(null);
   const [layerData, setLayerData] = useState(null);
   const [layerDisplayList, setLayerDisplayList] = useState([]);
+  const [pointCloudDateByDataset, setPointCloudDateByDataset] = useState({});
+  const [spatialSubset, setSpatialSubset] = useState(null);
+
+  // Component priority management
+  const [activeBottomComponent, setActiveBottomComponent] = useState(null);
+  // Options: 'animation', 'station-chart', 'analysis-results', 'two-date-switch'
+
   const {
     selectedStation,
     isLoading,
@@ -50,9 +110,26 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     chartDatasets,
   } = useStationChart();
 
-  const [currentRasterFeature, setCurrentRasterFeature] = useState(null);
+  const [currentActiveDate, setCurrentActiveDate] = useState(null);
+  const [currentActiveFeature, setCurrentActiveFeature] = useState(null);
 
-  // Store layer data for each dataset separately
+  const {
+    aoiState,
+    startDrawing,
+    clearAOI,
+    runAnalysis,
+    onDrawComplete,
+    onDrawCancel,
+    clearResults,
+    canRunAnalysis,
+    isAnalyzing,
+    hasResults,
+  } = useAOIIntegration(layerDisplayList, {
+    activeDate: currentActiveDate,
+    activeLayer: selectedRecord,
+  });
+
+  const [currentRasterFeature, setCurrentRasterFeature] = useState(null);
   const allDatasetLayerData = useRef(new Map());
 
   const onLayerSelect = (url) => {
@@ -78,27 +155,35 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
       allActiveDatasets.current.push(dataset);
     }
 
-    // --- ADDED FOR OPACITY/REMOVE FEATURE ---
-    // This new logic updates our new state array to keep it in sync with the ref.
-    // This is what will cause the RecordDetailView to re-render when a new layer is added.
     setLayerDisplayList((currentList) => {
       const existingDisplayIndex = currentList.findIndex(
         (d) => d.id === dataset.id
       );
       if (existingDisplayIndex !== -1) {
-        // If the item is already in our list, update its details
-        // but preserve its existing opacity and position.
         const updatedList = [...currentList];
         updatedList[existingDisplayIndex] = {
-          ...dataset, // new metadata
-          opacity: updatedList[existingDisplayIndex].opacity, // keep old opacity
+          ...dataset,
+          opacity: updatedList[existingDisplayIndex].opacity,
         };
         return updatedList;
       }
-      // NEW datasets go to the END (top of render order)
       return [...currentList, { ...dataset, opacity: 100 }];
     });
   };
+
+  const handleFrameChange = useCallback((feature) => {
+    setCurrentRasterFeature(feature);
+
+    const activeDate =
+      feature?.properties?.start_datetime ||
+      feature?.properties?.datetime ||
+      feature?.properties?.date;
+    if (activeDate) {
+      setCurrentActiveDate(activeDate);
+      setCurrentActiveFeature(feature);
+      setActiveBottomComponent('animation');
+    }
+  }, []);
 
   const allActiveLayers = useRef([]);
   const updateActiveLayers = (layers) => {
@@ -107,7 +192,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
 
   const onRecordSelect = (dataWithMetadata) => {
     let datasetInfo, actualData;
-    
+
     if (dataWithMetadata.datasetInfo && dataWithMetadata.galleryType) {
       datasetInfo = dataWithMetadata.datasetInfo;
       actualData = { ...dataWithMetadata, datasetInfo: undefined };
@@ -116,23 +201,30 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
       actualData = dataWithMetadata;
     }
 
-    // Store the layer data for this dataset
     allDatasetLayerData.current.set(datasetInfo.id, actualData);
-    
-    // Always update selectedRecord and layerData for the newly selected dataset
     setSelectedRecord(datasetInfo);
     setLayerData(actualData);
-    
-    // If this is a raster dataset, update the selected dataset ID
+
+    if (datasetInfo.type === 'point-cloud') {
+      const first = (actualData?.available_dates || [])[0];
+      setPointCloudDateByDataset((prev) => ({
+        ...prev,
+        [datasetInfo.id]: first || prev[datasetInfo.id] || null,
+      }));
+      setActiveBottomComponent('two-date-switch');
+    }
+
     if (datasetInfo.type === 'raster') {
       setSelectedDatasetId(datasetInfo.id);
+      setActiveBottomComponent('animation');
     }
-    
+
     setOpenDrawer(false);
   };
 
   const handleStationClick = (stationFeature) => {
     showStationChart(stationFeature);
+    setActiveBottomComponent('station-chart');
   };
 
   const handleOpacityChange = (datasetId, newOpacity) => {
@@ -143,20 +235,16 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     );
   };
 
-  // Handle layer reordering (now with dropdown sync)
   const handleLayerReorder = (reorderedLayers) => {
-    console.log('Reordering layers:', reorderedLayers.map(l => l.name));
     setLayerDisplayList(reorderedLayers);
-    
-    // Keep the allActiveDatasets ref in sync
     allActiveDatasets.current = reorderedLayers;
 
-    // SYNC DROPDOWN: Update selected dataset to the new top raster
-    const newTopRaster = [...reorderedLayers].reverse().find(d => d.type === 'raster');
+    const newTopRaster = [...reorderedLayers]
+      .reverse()
+      .find((d) => d.type === 'raster');
     if (newTopRaster && newTopRaster.id !== selectedDatasetId) {
       setSelectedDatasetId(newTopRaster.id);
-      
-      // Update the layer data for the new top raster
+
       const storedLayerData = allDatasetLayerData.current.get(newTopRaster.id);
       if (storedLayerData) {
         setSelectedRecord(newTopRaster);
@@ -165,18 +253,16 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     }
   };
 
-  // Move layer to top when selected from dropdown
   const moveLayerToTop = (datasetId) => {
     setLayerDisplayList((currentList) => {
-      console.log('Layer order before move:', currentList.map(l => l.name));
-      const layerIndex = currentList.findIndex(layer => layer.id === datasetId);
+      const layerIndex = currentList.findIndex(
+        (layer) => layer.id === datasetId
+      );
       if (layerIndex === -1) return currentList;
-      
+
       const reorderedList = [...currentList];
       const [movedLayer] = reorderedList.splice(layerIndex, 1);
-      reorderedList.push(movedLayer); // Move to end (top of rendering order)
-      
-      console.log('Layer order after move:', reorderedList.map(l => l.name));
+      reorderedList.push(movedLayer);
       return reorderedList;
     });
   };
@@ -188,16 +274,14 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     allActiveDatasets.current = allActiveDatasets.current.filter(
       (item) => item.id !== datasetId
     );
-    
-    // Remove stored layer data
+
     allDatasetLayerData.current.delete(datasetId);
-    
+
     if (selectedRecord?.id === datasetId) {
-      // If we're removing the currently selected dataset, try to select another raster
       const remainingRasters = layerDisplayList.filter(
         (item) => item.id !== datasetId && item.type === 'raster'
       );
-      
+
       if (remainingRasters.length > 0) {
         const nextRaster = remainingRasters[0];
         setSelectedDatasetId(nextRaster.id);
@@ -214,21 +298,47 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     }
   };
 
+  const handleSpatialSubsetChange = (newSpatialSubset) => {
+    setSpatialSubset(newSpatialSubset);
+  };
+
+  // Priority management functions
+  const hideStationChartWithPriority = useCallback(() => {
+    hideStationChart();
+    if (activeBottomComponent === 'station-chart') {
+      if (hasResults) {
+        setActiveBottomComponent('analysis-results');
+      } else if (selectedDatasetId && rasterDatasets.length > 0) {
+        setActiveBottomComponent('animation');
+      } else if (selectedRecord?.type === 'point-cloud') {
+        setActiveBottomComponent('two-date-switch');
+      } else {
+        setActiveBottomComponent(null);
+      }
+    }
+  }, [hideStationChart, activeBottomComponent, hasResults, selectedDatasetId, selectedRecord]);
+
+  const clearResultsWithPriority = useCallback(() => {
+    clearResults();
+    if (activeBottomComponent === 'analysis-results') {
+      if (isVisible && selectedStation) {
+        setActiveBottomComponent('station-chart');
+      } else if (selectedDatasetId && rasterDatasets.length > 0) {
+        setActiveBottomComponent('animation');
+      } else if (selectedRecord?.type === 'point-cloud') {
+        setActiveBottomComponent('two-date-switch');
+      } else {
+        setActiveBottomComponent(null);
+      }
+    }
+  }, [clearResults, activeBottomComponent, isVisible, selectedStation, selectedDatasetId, selectedRecord]);
+
+  // Effect to set analysis results as active when they appear
   useEffect(() => {
-    fetch('/plugins/pointcloud/events.js')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.text();
-      })
-      .then((eventsCode) => {
-        eval(eventsCode);
-      })
-      .catch((err) => {
-        console.error('Failed to load or eval events.js:', err);
-      });
-  }, []);
+    if (hasResults) {
+      setActiveBottomComponent('analysis-results');
+    }
+  }, [hasResults]);
 
   useEffect(() => {
     const isRaster =
@@ -248,53 +358,65 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
     (dataset) => dataset.type === 'raster'
   );
 
-  // UPDATED: Handle dataset change with layer reordering
   const handleDatasetChange = (event) => {
     const newDatasetId = event.target.value;
     setSelectedDatasetId(newDatasetId);
 
-    // Find the selected dataset
     const selectedDataset = layerDisplayList.find((d) => d.id === newDatasetId);
     if (selectedDataset) {
       setSelectedRecord(selectedDataset);
-      
-      // Get the stored layer data for this dataset
+
       const storedLayerData = allDatasetLayerData.current.get(newDatasetId);
       if (storedLayerData) {
         setLayerData(storedLayerData);
       } else {
-        // Fallback to the dataset itself if no stored data
         setLayerData(selectedDataset);
       }
-      
-      // Move this layer to the top of the rendering order
+
       moveLayerToTop(newDatasetId);
+      setActiveBottomComponent('animation');
     }
   };
 
-  // Update the auto-selection effect to sync with top raster layer
   useEffect(() => {
     if (rasterDatasets.length > 0) {
-      // Find the last (top-rendering) raster dataset
-      const topRasterDataset = [...rasterDatasets].reverse().find(d => d.type === 'raster');
-      
+      const topRasterDataset = [...rasterDatasets]
+        .reverse()
+        .find((d) => d.type === 'raster');
+
       if (topRasterDataset && selectedDatasetId !== topRasterDataset.id) {
         setSelectedDatasetId(topRasterDataset.id);
-        
-        // Set the layer data for the top raster
-        const storedLayerData = allDatasetLayerData.current.get(topRasterDataset.id);
+
+        const storedLayerData = allDatasetLayerData.current.get(
+          topRasterDataset.id
+        );
         if (storedLayerData) {
           setSelectedRecord(topRasterDataset);
           setLayerData(storedLayerData);
         }
       }
     } else {
-      // No raster datasets available, clear selection
       setSelectedDatasetId(null);
     }
-  }, [layerDisplayList]); // Changed dependency to layerDisplayList instead of rasterDatasets
+  }, [layerDisplayList, selectedDatasetId]);
 
-  // Create dropdown component
+  const aoiAsSpatialSubset = React.useMemo(() => {
+    if (!aoiState.selectedAOI) return spatialSubset;
+
+    try {
+      const bounds = bbox(aoiState.selectedAOI);
+      return {
+        west: bounds[0],
+        south: bounds[1],
+        east: bounds[2],
+        north: bounds[3],
+      };
+    } catch (error) {
+      console.warn('Error converting AOI to spatial subset:', error);
+      return spatialSubset;
+    }
+  }, [aoiState.selectedAOI, spatialSubset]);
+
   const titleDropdown = (
     <div className='mb-3'>
       <select
@@ -332,6 +454,12 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
 
       <div id='dashboard-map-container'>
         <MainMap>
+          <AOILayer
+            aoi={aoiState.selectedAOI}
+            isDrawing={aoiState.isDrawing}
+            onDrawComplete={onDrawComplete}
+            onDrawCancel={onDrawCancel}
+          />
           <Paper
             className='title-container'
             sx={{
@@ -347,9 +475,15 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
           >
             <Stack sx={{ p: 1.5, overflowY: 'auto' }} spacing={1.5}>
               <Title title={TITLE} description={DESCRIPTION} />
-              <Search vizItems={[]} onSelectedVizItemSearch={console.log('')} />
-              <FilterByDate vizItems={[]} onFilteredVizItems={[]} />
-              <SpatialSubsetManager />
+              <AOIControls
+                layerDisplayList={layerDisplayList}
+                onStartDrawing={startDrawing}
+                onClearAOI={clearAOI}
+                onRunAnalysis={runAnalysis}
+                position='embedded'
+                activeDate={currentActiveDate}
+                activeLayer={selectedRecord}
+              />
 
               <RecordDetailView
                 record={selectedRecord}
@@ -362,13 +496,15 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
               />
             </Stack>
           </Paper>
-
           <MapControls
             openDrawer={openDrawer}
             setOpenDrawer={setOpenDrawer}
             handleResetHome={console.log('')}
           />
-          {selectedDatasetId &&
+
+          {/* ItemAnimation - only show when it's the active component */}
+          {activeBottomComponent === 'animation' &&
+            selectedDatasetId &&
             rasterDatasets.length > 0 &&
             selectedRecord?.type === 'raster' &&
             selectedRecord?.id === selectedDatasetId &&
@@ -378,7 +514,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
                 style={{
                   position: 'absolute',
                   right: 10,
-                  bottom: 10,
+                  bottom: '10px',
                   width: 420,
                   zIndex: 1302,
                   background: 'white',
@@ -388,12 +524,32 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
               >
                 <ItemAnimation
                   items={layerData.features}
-                  onFrameChange={(feature) => setCurrentRasterFeature(feature)}
+                  onFrameChange={handleFrameChange}
                   title={titleDropdown}
                   initialAutoPlay={false}
                   speedMs={700}
                 />
               </div>
+            )}
+
+          {/* TwoDateSwitch - only show when it's the active component */}
+          {activeBottomComponent === 'two-date-switch' &&
+            selectedRecord?.type === 'point-cloud' &&
+            Array.isArray(layerData?.available_dates) &&
+            layerData.available_dates.length > 0 && (
+              <TwoDateSwitch
+                dates={layerData.available_dates}
+                value={
+                  pointCloudDateByDataset[selectedRecord.id] ||
+                  layerData.available_dates[0]
+                }
+                onChange={(next) => {
+                  setPointCloudDateByDataset((prev) => ({
+                    ...prev,
+                    [selectedRecord.id]: next,
+                  }));
+                }}
+              />
             )}
 
           <DeckGlLayerManager
@@ -418,9 +574,21 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
             onStationClick={handleStationClick}
             visible={true}
             layerOpacityList={layerDisplayList}
+            spatialSubset={aoiAsSpatialSubset}
+            allActiveDatasets={layerDisplayList}
+            pointCloudDate={
+              selectedRecord?.type === 'point-cloud'
+                ? pointCloudDateByDataset[selectedRecord.id] ||
+                  layerData?.available_dates?.[0] ||
+                  null
+                : null
+            }
+            aoiGeometry={aoiState.selectedAOI}
+            isDrawingAOI={aoiState.isDrawing}
           />
 
-          {isVisible && selectedStation && (
+          {/* Station Chart - only show when it's the active component */}
+          {activeBottomComponent === 'station-chart' && isVisible && selectedStation && (
             <div
               style={{
                 position: 'absolute',
@@ -450,7 +618,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
                   }}
                 >
                   <p>Error loading data: {error.message}</p>
-                  <CloseButton handleClose={hideStationChart} />
+                  <CloseButton handleClose={hideStationChartWithPriority} />
                 </div>
               )}
               {!isLoading && !error && (
@@ -476,7 +644,7 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
                           {`Station ${selectedStation.station_code} - ${selectedStation.city || 'Unknown'}`}
                         </h3>
                         <div style={{ zIndex: '10000' }}>
-                          <CloseButton handleClose={hideStationChart} />
+                          <CloseButton handleClose={hideStationChartWithPriority} />
                         </div>
                       </div>
                       <div style={{ flex: 1, padding: '16px' }}>
@@ -494,10 +662,9 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
                       }}
                     >
                       <p>
-                        No data available for this station in the selected time
-                        range.
+                        No data available for this station in the selected time range.
                       </p>
-                      <CloseButton handleClose={hideStationChart} />
+                      <CloseButton handleClose={hideStationChartWithPriority} />
                     </div>
                   )}
                 </>
@@ -513,6 +680,11 @@ export function Dashboard({ zoomLocation, zoomLevel, loadingData }) {
           onRecordSelect={onRecordSelect}
           updateActiveDataset={updateActiveDataset}
         />
+
+        {/* AnalysisResults - only show when it's the active component */}
+        {activeBottomComponent === 'analysis-results' && hasResults && (
+          <AnalysisResults onClose={clearResultsWithPriority} position='bottom' />
+        )}
       </div>
       {loadingData && <LoadingSpinner />}
     </Box>

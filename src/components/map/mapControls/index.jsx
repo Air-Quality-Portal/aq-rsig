@@ -43,17 +43,17 @@ const DefaultMapControls = ({
     const restoreControl = new RestoreControl(handleResetToSelectedRegion);
 
     const hamburgerControlElem = hamburgerControl.onAdd(map);
-    const homeControlElem = homeControl.onAdd(map);
-    const restoreControlElem = restoreControl.onAdd(map);
+    // const homeControlElem = homeControl.onAdd(map);
+    // const restoreControlElem = restoreControl.onAdd(map);
     const mapboxNavigationElem = mapboxNavigation.onAdd(map);
-    const layerVisibilityControlElem = layerVisibilityControl.onAdd(map);
+    // const layerVisibilityControlElem = layerVisibilityControl.onAdd(map);
 
     const mapboxCustomControlContainer = customControlContainer.current;
     mapboxCustomControlContainer.append(hamburgerControlElem);
-    mapboxCustomControlContainer.append(homeControlElem);
-    mapboxCustomControlContainer.append(restoreControlElem);
+    // mapboxCustomControlContainer.append(homeControlElem);
+    // mapboxCustomControlContainer.append(restoreControlElem);
     mapboxCustomControlContainer.append(mapboxNavigationElem);
-    mapboxCustomControlContainer.append(layerVisibilityControlElem);
+    // mapboxCustomControlContainer.append(layerVisibilityControlElem);
 
     return () => {
       // clean ups

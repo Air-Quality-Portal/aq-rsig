@@ -24,12 +24,14 @@ export const removeDatasetLayers = (layers, datasetId) => {
     `deckgl-pointcloud-layer-${datasetId}`,
     `deckgl-raster-layer-${datasetId}`,
     `deckgl-netcdf-2d-layer-${datasetId}`,
-    `deckgl-station-layer-${datasetId}`
+    `deckgl-station-layer-${datasetId}`,
   ];
 
-  return layers.filter(layer => {
-    const belongsToDataset = prefixes.some(prefix => layer.id.startsWith(prefix));
-    
+  return layers.filter((layer) => {
+    const belongsToDataset = prefixes.some((prefix) =>
+      layer.id.startsWith(prefix)
+    );
+
     if (belongsToDataset) {
       console.log(`🗑️ Removing layer for dataset ${datasetId}:`, layer.id);
     }
@@ -38,15 +40,15 @@ export const removeDatasetLayers = (layers, datasetId) => {
   });
 };
 
-
-
 export const calculateGeoJSONBounds = (features) => {
   if (!features || features.length === 0) return null;
-  
-  let minLng = Infinity, minLat = Infinity;
-  let maxLng = -Infinity, maxLat = -Infinity;
-  
-  features.forEach(feature => {
+
+  let minLng = Infinity,
+    minLat = Infinity;
+  let maxLng = -Infinity,
+    maxLat = -Infinity;
+
+  features.forEach((feature) => {
     if (feature.bbox) {
       minLng = Math.min(minLng, feature.bbox[0]);
       minLat = Math.min(minLat, feature.bbox[1]);
@@ -54,14 +56,14 @@ export const calculateGeoJSONBounds = (features) => {
       maxLat = Math.max(maxLat, feature.bbox[3]);
     } else if (feature.geometry) {
       const coords = feature.geometry.coordinates;
-      
+
       if (feature.geometry.type === 'Point') {
         minLng = Math.min(minLng, coords[0]);
         maxLng = Math.max(maxLng, coords[0]);
         minLat = Math.min(minLat, coords[1]);
         maxLat = Math.max(maxLat, coords[1]);
       } else if (feature.geometry.type === 'Polygon') {
-        coords[0].forEach(coord => {
+        coords[0].forEach((coord) => {
           minLng = Math.min(minLng, coord[0]);
           maxLng = Math.max(maxLng, coord[0]);
           minLat = Math.min(minLat, coord[1]);
@@ -70,7 +72,7 @@ export const calculateGeoJSONBounds = (features) => {
       }
     }
   });
-  
+
   if (minLng === Infinity) return null;
   return { minLng, minLat, maxLng, maxLat };
 };
@@ -81,36 +83,41 @@ export const zoomToBounds = (map, bounds, options = {}) => {
     maxZoom = 18,
     duration = 2000,
     pitch = 0,
-    bearing = 0
+    bearing = 0,
   } = options;
-  
+
   if (!bounds || !map) return;
-  
+
   const { minLng, minLat, maxLng, maxLat } = bounds;
-  const isGlobal = (maxLng - minLng) > 300 || (maxLat - minLat) > 150;
-  
+  const isGlobal = maxLng - minLng > 300 || maxLat - minLat > 150;
+
   if (isGlobal) {
     map.flyTo({
       center: [0, 30],
       zoom: 1,
       pitch: pitch,
       bearing: bearing,
-      duration: duration
+      duration: duration,
     });
   } else {
     try {
       map.fitBounds(
-        [[minLng, minLat], [maxLng, maxLat]],
+        [
+          [minLng, minLat],
+          [maxLng, maxLat],
+        ],
         { padding, maxZoom, duration, pitch, bearing }
       );
     } catch (error) {
-      console.error("Mapbox fitBounds error, falling back to flyTo:", error);
+      console.error('Mapbox fitBounds error, falling back to flyTo:', error);
       const centerLng = (minLng + maxLng) / 2;
       const centerLat = (minLat + maxLat) / 2;
       map.flyTo({
         center: [centerLng, centerLat],
         zoom: 4,
-        pitch, bearing, duration
+        pitch,
+        bearing,
+        duration,
       });
     }
   }
@@ -121,59 +128,71 @@ export const buildRasterTileUrl = (collection, itemId, options = {}) => {
     assets = 'cog_default',
     colormap = 'plasma',
     rescale = '0,255',
-    nodata = '-9999'
+    nodata = '-9999',
   } = options;
 
   const baseUrl = 'https://dev.openveda.cloud/api/raster';
-  
-  return `${baseUrl}/collections/${collection}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x` +
+
+  return (
+    `${baseUrl}/collections/${collection}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x` +
     `?item=${itemId}` +
     `&assets=${assets}` +
     `&bidx=1` +
     `&colormap_name=${colormap}` +
     `&rescale=${rescale}` +
-    `&nodata=${nodata}`;
+    `&nodata=${nodata}`
+  );
 };
 
-export const buildNetCDF2DTileUrl = (conceptId, datetime, variable, varValues, options = {}) => {
+export const buildNetCDF2DTileUrl = (
+  conceptId,
+  datetime,
+  variable,
+  varValues,
+  options = {}
+) => {
   // Return an empty array if varValues is not provided or is empty
   if (!varValues || Object.keys(varValues).length === 0) {
     return [];
   }
 
-  const baseUrl = 'https://v4jec6i5c0.execute-api.us-west-2.amazonaws.com/tiles/WebMercatorQuad/{z}/{x}/{y}';
-  
+  const baseUrl =
+    'https://v4jec6i5c0.execute-api.us-west-2.amazonaws.com/tiles/WebMercatorQuad/{z}/{x}/{y}';
+
   const baseParams = {
-  concept_id: 'C2837626477-GES_DISC',
-  variable: 'o3',
-  rescale: '20,70',
-  backend: 'xarray',
-  sel_method: 'nearest',
-  colormap_name: 'reds', 
-};
+    concept_id: 'C2837626477-GES_DISC',
+    variable: 'o3',
+    rescale: '20,70',
+    backend: 'xarray',
+    sel_method: 'nearest',
+    colormap_name: 'reds',
+  };
 
-const urls = [];
+  const urls = [];
 
-for (const [dimensionKey, dimensionValues] of Object.entries(varValues)) {
-  for (const value of dimensionValues) {
-    const params = new URLSearchParams(baseParams);
+  for (const [dimensionKey, dimensionValues] of Object.entries(varValues)) {
+    for (const value of dimensionValues) {
+      const params = new URLSearchParams(baseParams);
 
-    // Add sel=dimension=value (e.g., sel=lev=500)
-    params.append('sel', `${dimensionKey}=${value}`);
+      // Add sel=dimension=value (e.g., sel=lev=500)
+      params.append('sel', `${dimensionKey}=${value}`);
 
-    // Add sel=time=timestamp (from datetime)
-    const isoTime = new Date(datetime).toISOString();
-    params.append('sel', `time=${isoTime}`);
+      // Add sel=time=timestamp (from datetime)
+      const isoTime = new Date(datetime).toISOString();
+      params.append('sel', `time=${isoTime}`);
 
-    // Add datetime as a range (e.g., 2021-12-01T00:00:00.000Z/2021-12-01T23:59:59.999Z)
-    const dayStart = new Date(datetime);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setUTCHours(23, 59, 59, 999);
-    params.set('datetime', `${dayStart.toISOString()}/${dayEnd.toISOString()}`);
+      // Add datetime as a range (e.g., 2021-12-01T00:00:00.000Z/2021-12-01T23:59:59.999Z)
+      const dayStart = new Date(datetime);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setUTCHours(23, 59, 59, 999);
+      params.set(
+        'datetime',
+        `${dayStart.toISOString()}/${dayEnd.toISOString()}`
+      );
 
-    urls.push(`${baseUrl}?${params.toString()}`);
+      urls.push(`${baseUrl}?${params.toString()}`);
+    }
   }
-}
   return urls;
 };
 
@@ -184,63 +203,71 @@ export const buildTileUrl = (type, params) => {
         assets: params.assets,
         colormap: params.colormap,
         rescale: params.rescale,
-        nodata: params.nodata
+        nodata: params.nodata,
       });
-    
+
     case 'netcdf-2d':
-      return buildNetCDF2DTileUrl(params.conceptId, params.datetime, params.variable, {
-        scale: params.scale,
-        colormap: params.colormap,
-        rescale: params.rescale,
-        backend: params.backend,
-        ...params.additionalParams
-      });
-    
+      return buildNetCDF2DTileUrl(
+        params.conceptId,
+        params.datetime,
+        params.variable,
+        {
+          scale: params.scale,
+          colormap: params.colormap,
+          rescale: params.rescale,
+          backend: params.backend,
+          ...params.additionalParams,
+        }
+      );
+
     default:
       throw new Error(`Cannot build URL for dataset type: ${type}`);
   }
 };
 
 export const layerExists = (layers, layerId) => {
-  return layers.some(layer => layer.id === layerId);
+  return layers.some((layer) => layer.id === layerId);
 };
 
 export const removeLayer = (layers, layerId) => {
-  return layers.filter(layer => layer.id !== layerId);
+  return layers.filter((layer) => layer.id !== layerId);
 };
-
 
 export const addOrUpdateLayers = (layers, newLayers, datasetId) => {
   console.log('🔧 addOrUpdateLayers Debug:', {
     datasetId,
     existingLayersCount: layers.length,
-    existingLayerIds: layers.map(l => l.id),
+    existingLayerIds: layers.map((l) => l.id),
     newLayersCount: newLayers.length,
-    newLayerIds: newLayers.map(l => l.id)
+    newLayerIds: newLayers.map((l) => l.id),
   });
-  
-  layers.forEach(layer => {
+
+  layers.forEach((layer) => {
     const includesTest = layer.id.includes(datasetId);
     const includesWithDashTest = layer.id.includes(`-${datasetId}`);
     const includesWithDashEndTest = layer.id.includes(`-${datasetId}-`);
-    const regexTest = new RegExp(`deckgl-\\w+-layer-${escapeRegExp(datasetId)}(?:-|$)`).test(layer.id);
+    const regexTest = new RegExp(
+      `deckgl-\\w+-layer-${escapeRegExp(datasetId)}(?:-|$)`
+    ).test(layer.id);
   });
-  
-  const filteredLayers = layers.filter(layer => {
-    const exactPattern = new RegExp(`^deckgl-\\w+-layer-${escapeRegExp(datasetId)}(?:-.*)?$`);
+
+  const filteredLayers = layers.filter((layer) => {
+    const exactPattern = new RegExp(
+      `^deckgl-\\w+-layer-${escapeRegExp(datasetId)}(?:-.*)?$`
+    );
     const belongsToCurrentDataset = exactPattern.test(layer.id);
-    
+
     const shouldKeep = !belongsToCurrentDataset;
-    
+
     return shouldKeep;
   });
-  
+
   console.log('📝 After filtering:', {
     filteredLayersCount: filteredLayers.length,
-    filteredLayerIds: filteredLayers.map(l => l.id),
-    removedCount: layers.length - filteredLayers.length
+    filteredLayerIds: filteredLayers.map((l) => l.id),
+    removedCount: layers.length - filteredLayers.length,
   });
-  
+
   const result = [...filteredLayers, ...newLayers];
   return result;
 };
