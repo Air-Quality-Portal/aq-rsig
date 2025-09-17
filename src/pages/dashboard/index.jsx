@@ -40,7 +40,6 @@ const TITLE = 'RSIG Dashboard';
 const DESCRIPTION = '';
 
 function TwoDateSwitch({ dates = [], value, onChange }) {
-  // keep only the first two dates; sort ascending
   const two = Array.from(new Set(dates))
     .sort((a, b) => new Date(a) - new Date(b))
     .slice(0, 2);
@@ -95,8 +94,11 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
   const [layerData, setLayerData] = useState(null);
   const [layerDisplayList, setLayerDisplayList] = useState([]);
   const [pointCloudDateByDataset, setPointCloudDateByDataset] = useState({});
-  // Spatial subset state
   const [spatialSubset, setSpatialSubset] = useState(null);
+
+  // Component priority management
+  const [activeBottomComponent, setActiveBottomComponent] = useState(null);
+  // Options: 'animation', 'station-chart', 'analysis-results', 'two-date-switch'
 
   const {
     selectedStation,
@@ -128,8 +130,6 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
   });
 
   const [currentRasterFeature, setCurrentRasterFeature] = useState(null);
-
-  // Store layer data for each dataset separately
   const allDatasetLayerData = useRef(new Map());
 
   const onLayerSelect = (url) => {
@@ -160,16 +160,13 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
         (d) => d.id === dataset.id
       );
       if (existingDisplayIndex !== -1) {
-        // If the item is already in our list, update its details
-        // but preserve its existing opacity and position.
         const updatedList = [...currentList];
         updatedList[existingDisplayIndex] = {
-          ...dataset, // new metadata
-          opacity: updatedList[existingDisplayIndex].opacity, // keep old opacity
+          ...dataset,
+          opacity: updatedList[existingDisplayIndex].opacity,
         };
         return updatedList;
       }
-      // NEW datasets go to the END (top of render order)
       return [...currentList, { ...dataset, opacity: 100 }];
     });
   };
@@ -177,15 +174,14 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
   const handleFrameChange = useCallback((feature) => {
     setCurrentRasterFeature(feature);
 
-    // Extract and set the active date for AOI analysis
     const activeDate =
       feature?.properties?.start_datetime ||
       feature?.properties?.datetime ||
       feature?.properties?.date;
     if (activeDate) {
-      // Store the original string, don't convert to Date yet
-      setCurrentActiveDate(activeDate); // Keep as string
+      setCurrentActiveDate(activeDate);
       setCurrentActiveFeature(feature);
+      setActiveBottomComponent('animation');
     }
   }, []);
 
@@ -205,25 +201,22 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
       actualData = dataWithMetadata;
     }
 
-    // Store the layer data for this dataset
     allDatasetLayerData.current.set(datasetInfo.id, actualData);
-
-    // Always update selectedRecord and layerData for the newly selected dataset
     setSelectedRecord(datasetInfo);
     setLayerData(actualData);
 
-    // Init point-cloud date to first available when a CALIPSO dataset is selected
     if (datasetInfo.type === 'point-cloud') {
       const first = (actualData?.available_dates || [])[0];
       setPointCloudDateByDataset((prev) => ({
         ...prev,
         [datasetInfo.id]: first || prev[datasetInfo.id] || null,
       }));
+      setActiveBottomComponent('two-date-switch');
     }
 
-    // If this is a raster dataset, update the selected dataset ID
     if (datasetInfo.type === 'raster') {
       setSelectedDatasetId(datasetInfo.id);
+      setActiveBottomComponent('animation');
     }
 
     setOpenDrawer(false);
@@ -231,6 +224,7 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
 
   const handleStationClick = (stationFeature) => {
     showStationChart(stationFeature);
+    setActiveBottomComponent('station-chart');
   };
 
   const handleOpacityChange = (datasetId, newOpacity) => {
@@ -241,25 +235,16 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
     );
   };
 
-  // Handle layer reordering (now with dropdown sync)
   const handleLayerReorder = (reorderedLayers) => {
-    console.log(
-      'Reordering layers:',
-      reorderedLayers.map((l) => l.name)
-    );
     setLayerDisplayList(reorderedLayers);
-
-    // Keep the allActiveDatasets ref in sync
     allActiveDatasets.current = reorderedLayers;
 
-    // SYNC DROPDOWN: Update selected dataset to the new top raster
     const newTopRaster = [...reorderedLayers]
       .reverse()
       .find((d) => d.type === 'raster');
     if (newTopRaster && newTopRaster.id !== selectedDatasetId) {
       setSelectedDatasetId(newTopRaster.id);
 
-      // Update the layer data for the new top raster
       const storedLayerData = allDatasetLayerData.current.get(newTopRaster.id);
       if (storedLayerData) {
         setSelectedRecord(newTopRaster);
@@ -268,13 +253,8 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
     }
   };
 
-  // Move layer to top when selected from dropdown
   const moveLayerToTop = (datasetId) => {
     setLayerDisplayList((currentList) => {
-      console.log(
-        'Layer order before move:',
-        currentList.map((l) => l.name)
-      );
       const layerIndex = currentList.findIndex(
         (layer) => layer.id === datasetId
       );
@@ -282,12 +262,7 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
 
       const reorderedList = [...currentList];
       const [movedLayer] = reorderedList.splice(layerIndex, 1);
-      reorderedList.push(movedLayer); // Move to end (top of rendering order)
-
-      console.log(
-        'Layer order after move:',
-        reorderedList.map((l) => l.name)
-      );
+      reorderedList.push(movedLayer);
       return reorderedList;
     });
   };
@@ -300,11 +275,9 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
       (item) => item.id !== datasetId
     );
 
-    // Remove stored layer data
     allDatasetLayerData.current.delete(datasetId);
 
     if (selectedRecord?.id === datasetId) {
-      // If we're removing the currently selected dataset, try to select another raster
       const remainingRasters = layerDisplayList.filter(
         (item) => item.id !== datasetId && item.type === 'raster'
       );
@@ -325,11 +298,47 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
     }
   };
 
-  // Handle spatial subset changes
   const handleSpatialSubsetChange = (newSpatialSubset) => {
-    console.log('Spatial subset changed:', newSpatialSubset);
     setSpatialSubset(newSpatialSubset);
   };
+
+  // Priority management functions
+  const hideStationChartWithPriority = useCallback(() => {
+    hideStationChart();
+    if (activeBottomComponent === 'station-chart') {
+      if (hasResults) {
+        setActiveBottomComponent('analysis-results');
+      } else if (selectedDatasetId && rasterDatasets.length > 0) {
+        setActiveBottomComponent('animation');
+      } else if (selectedRecord?.type === 'point-cloud') {
+        setActiveBottomComponent('two-date-switch');
+      } else {
+        setActiveBottomComponent(null);
+      }
+    }
+  }, [hideStationChart, activeBottomComponent, hasResults, selectedDatasetId, selectedRecord]);
+
+  const clearResultsWithPriority = useCallback(() => {
+    clearResults();
+    if (activeBottomComponent === 'analysis-results') {
+      if (isVisible && selectedStation) {
+        setActiveBottomComponent('station-chart');
+      } else if (selectedDatasetId && rasterDatasets.length > 0) {
+        setActiveBottomComponent('animation');
+      } else if (selectedRecord?.type === 'point-cloud') {
+        setActiveBottomComponent('two-date-switch');
+      } else {
+        setActiveBottomComponent(null);
+      }
+    }
+  }, [clearResults, activeBottomComponent, isVisible, selectedStation, selectedDatasetId, selectedRecord]);
+
+  // Effect to set analysis results as active when they appear
+  useEffect(() => {
+    if (hasResults) {
+      setActiveBottomComponent('analysis-results');
+    }
+  }, [hasResults]);
 
   useEffect(() => {
     const isRaster =
@@ -349,34 +358,28 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
     (dataset) => dataset.type === 'raster'
   );
 
-  // Handle dataset change (From the itemAnimationDropdown) with layer reordering
   const handleDatasetChange = (event) => {
     const newDatasetId = event.target.value;
     setSelectedDatasetId(newDatasetId);
 
-    // Find the selected dataset
     const selectedDataset = layerDisplayList.find((d) => d.id === newDatasetId);
     if (selectedDataset) {
       setSelectedRecord(selectedDataset);
 
-      // Get the stored layer data for this dataset
       const storedLayerData = allDatasetLayerData.current.get(newDatasetId);
       if (storedLayerData) {
         setLayerData(storedLayerData);
       } else {
-        // Fallback to the dataset itself if no stored data
         setLayerData(selectedDataset);
       }
 
-      // Move this layer to the top of the rendering order
       moveLayerToTop(newDatasetId);
+      setActiveBottomComponent('animation');
     }
   };
 
-  // Update the auto-selection effect to sync with top raster layer
   useEffect(() => {
     if (rasterDatasets.length > 0) {
-      // Find the last (top-rendering) raster dataset
       const topRasterDataset = [...rasterDatasets]
         .reverse()
         .find((d) => d.type === 'raster');
@@ -384,7 +387,6 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
       if (topRasterDataset && selectedDatasetId !== topRasterDataset.id) {
         setSelectedDatasetId(topRasterDataset.id);
 
-        // Set the layer data for the top raster
         const storedLayerData = allDatasetLayerData.current.get(
           topRasterDataset.id
         );
@@ -394,12 +396,10 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
         }
       }
     } else {
-      // No raster datasets available, clear selection
       setSelectedDatasetId(null);
     }
-  }, [layerDisplayList]);
+  }, [layerDisplayList, selectedDatasetId]);
 
-  // Convert AOI to spatial subset format for compatibility
   const aoiAsSpatialSubset = React.useMemo(() => {
     if (!aoiState.selectedAOI) return spatialSubset;
 
@@ -417,7 +417,6 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
     }
   }, [aoiState.selectedAOI, spatialSubset]);
 
-  // Create dropdown component
   const titleDropdown = (
     <div className='mb-3'>
       <select
@@ -476,8 +475,6 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
           >
             <Stack sx={{ p: 1.5, overflowY: 'auto' }} spacing={1.5}>
               <Title title={TITLE} description={DESCRIPTION} />
-              {/* <Search vizItems={[]} onSelectedVizItemSearch={console.log('')} /> */}
-              {/* <FilterByDate vizItems={[]} onFilteredVizItems={[]} /> */}
               <AOIControls
                 layerDisplayList={layerDisplayList}
                 onStartDrawing={startDrawing}
@@ -504,7 +501,10 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
             setOpenDrawer={setOpenDrawer}
             handleResetHome={console.log('')}
           />
-          {selectedDatasetId &&
+
+          {/* ItemAnimation - only show when it's the active component */}
+          {activeBottomComponent === 'animation' &&
+            selectedDatasetId &&
             rasterDatasets.length > 0 &&
             selectedRecord?.type === 'raster' &&
             selectedRecord?.id === selectedDatasetId &&
@@ -514,7 +514,7 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                 style={{
                   position: 'absolute',
                   right: 10,
-                  bottom: hasResults ? '45vh' : '10px',
+                  bottom: '10px',
                   width: 420,
                   zIndex: 1302,
                   background: 'white',
@@ -524,14 +524,17 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
               >
                 <ItemAnimation
                   items={layerData.features}
-                  onFrameChange={handleFrameChange} // Use updated handler
+                  onFrameChange={handleFrameChange}
                   title={titleDropdown}
                   initialAutoPlay={false}
                   speedMs={700}
                 />
               </div>
             )}
-          {selectedRecord?.type === 'point-cloud' &&
+
+          {/* TwoDateSwitch - only show when it's the active component */}
+          {activeBottomComponent === 'two-date-switch' &&
+            selectedRecord?.type === 'point-cloud' &&
             Array.isArray(layerData?.available_dates) &&
             layerData.available_dates.length > 0 && (
               <TwoDateSwitch
@@ -548,7 +551,7 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                 }}
               />
             )}
-          // In your dashboard component, update the DeckGlLayerManager props:
+
           <DeckGlLayerManager
             activeLayerUrl={activeLayerUrl}
             updateActiveLayers={updateActiveLayers}
@@ -580,15 +583,16 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                   null
                 : null
             }
-            // Add these new props:
             aoiGeometry={aoiState.selectedAOI}
             isDrawingAOI={aoiState.isDrawing}
           />
-          {isVisible && selectedStation && (
+
+          {/* Station Chart - only show when it's the active component */}
+          {activeBottomComponent === 'station-chart' && isVisible && selectedStation && (
             <div
               style={{
                 position: 'absolute',
-                bottom: hasResults ? '45vh' : '10px',
+                bottom: '10px',
                 left: '10px',
                 width: 'calc(100% - 20px)',
                 height: '300px',
@@ -614,7 +618,7 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                   }}
                 >
                   <p>Error loading data: {error.message}</p>
-                  <CloseButton handleClose={hideStationChart} />
+                  <CloseButton handleClose={hideStationChartWithPriority} />
                 </div>
               )}
               {!isLoading && !error && (
@@ -640,7 +644,7 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                           {`Station ${selectedStation.station_code} - ${selectedStation.city || 'Unknown'}`}
                         </h3>
                         <div style={{ zIndex: '10000' }}>
-                          <CloseButton handleClose={hideStationChart} />
+                          <CloseButton handleClose={hideStationChartWithPriority} />
                         </div>
                       </div>
                       <div style={{ flex: 1, padding: '16px' }}>
@@ -658,10 +662,9 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
                       }}
                     >
                       <p>
-                        No data available for this station in the selected time
-                        range.
+                        No data available for this station in the selected time range.
                       </p>
-                      <CloseButton handleClose={hideStationChart} />
+                      <CloseButton handleClose={hideStationChartWithPriority} />
                     </div>
                   )}
                 </>
@@ -677,8 +680,10 @@ export function DashboardContent({ zoomLocation, zoomLevel, loadingData }) {
           onRecordSelect={onRecordSelect}
           updateActiveDataset={updateActiveDataset}
         />
-        {hasResults && (
-          <AnalysisResults onClose={clearResults} position='bottom' />
+
+        {/* AnalysisResults - only show when it's the active component */}
+        {activeBottomComponent === 'analysis-results' && hasResults && (
+          <AnalysisResults onClose={clearResultsWithPriority} position='bottom' />
         )}
       </div>
       {loadingData && <LoadingSpinner />}

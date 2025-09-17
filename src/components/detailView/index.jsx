@@ -67,7 +67,14 @@ const LayerCard = ({
           .join(', ')})`;
 
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.5,
+              width: '100%',
+            }}
+          >
             <Box
               sx={{
                 width: '100%',
@@ -77,10 +84,16 @@ const LayerCard = ({
               }}
             />
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
                 {formatNumber(dataset.rescale_values[0])}
               </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
                 {formatNumber(dataset.rescale_values[1])}
               </Typography>
             </Box>
@@ -93,7 +106,14 @@ const LayerCard = ({
 
       case 'point-cloud': {
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.5,
+              width: '100%',
+            }}
+          >
             <Box
               sx={{
                 display: 'flex',
@@ -121,16 +141,28 @@ const LayerCard = ({
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
                 0
               </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
                 0.0127
               </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
                 0.254
               </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
                 1.523
               </Typography>
             </Box>
@@ -154,7 +186,14 @@ const LayerCard = ({
           .map((c, i) => `${c} ${(i / (stops.length - 1)) * 100}%`)
           .join(', ')})`;
         return (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, width: '100%' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 0.5,
+              width: '100%',
+            }}
+          >
             <Box
               sx={{
                 width: '100%',
@@ -164,10 +203,16 @@ const LayerCard = ({
               }}
             />
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
                 {formatNumber(dataset.rescale_values[0])}
               </Typography>
-              <Typography variant="caption" sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>
+              <Typography
+                variant='caption'
+                sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
+              >
                 {formatNumber(dataset.rescale_values[1])}
               </Typography>
             </Box>
@@ -200,7 +245,9 @@ const LayerCard = ({
           }}
         >
           <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+            <Box
+              sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}
+            >
               <Box
                 {...provided.dragHandleProps}
                 sx={{
@@ -218,7 +265,7 @@ const LayerCard = ({
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography
                   variant='body2'
-                  sx={{ 
+                  sx={{
                     fontWeight: 'medium',
                     lineHeight: 1.3,
                   }}
@@ -270,9 +317,7 @@ const LayerCard = ({
               </IconButton>
             </Box>
 
-            <Box sx={{ width: '100%' }}>
-              {getStaticLegend(dataset)}
-            </Box>
+            <Box sx={{ width: '100%' }}>{getStaticLegend(dataset)}</Box>
 
             <Popover
               open={open}
@@ -331,7 +376,10 @@ export function RecordDetailView({
   const handleDragEnd = (result) => {
     setIsDragging(false);
 
-    if (!result.destination || result.destination.index === result.source.index) {
+    if (
+      !result.destination ||
+      result.destination.index === result.source.index
+    ) {
       return;
     }
 
@@ -427,9 +475,10 @@ export function RecordDetailView({
                 ) {
                   return layersForDataset.map((layer, layerIndex) => {
                     const pressureLevel = extractPressureLevel(layer.id);
-                    const layerName = dataset.type === 'netcdf-2d' && pressureLevel 
-                      ? `${getShortDatasetName(dataset.name)} - ${pressureLevel}`
-                      : `${dataset.name} (Level ${layerIndex + 1})`;
+                    const layerName =
+                      dataset.type === 'netcdf-2d' && pressureLevel
+                        ? `${getShortDatasetName(dataset.name)} - ${pressureLevel}`
+                        : `${dataset.name} (Level ${layerIndex + 1})`;
 
                     return (
                       <LayerCard
@@ -472,4 +521,4 @@ export function RecordDetailView({
   );
 }
 
-export { RecordDetailView as LayerDetailsView }
+export { RecordDetailView as LayerDetailsView };
