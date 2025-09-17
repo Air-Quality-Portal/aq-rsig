@@ -262,102 +262,94 @@ export function AOIControls({
               Analysis Area
             </Typography>
             
-            <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
               {!state.isDrawing ? (
                 <Button
                   variant="outlined"
                   size="small"
-                  startIcon={<DrawIcon />}
                   onClick={handleStartDrawing}
                   disabled={state.analysisState.status === 'analyzing'}
                   sx={{ 
                     minWidth: 'auto',
-                    px: 1.5,
+                    px: 1,
                     py: 0.5,
-                    fontSize: '0.75rem',
                   }}
                 >
-                  Draw
+                  <DrawIcon fontSize="small" />
                 </Button>
               ) : (
                 <Button
                   variant="outlined"
                   size="small"
-                  startIcon={<StopIcon />}
                   onClick={handleStopDrawing}
                   color="warning"
                   sx={{ 
                     minWidth: 'auto',
-                    px: 1.5,
+                    px: 1,
                     py: 0.5,
-                    fontSize: '0.75rem',
                   }}
                 >
-                  Stop
+                  <StopIcon fontSize="small" />
                 </Button>
               )}
 
+              {/* Compact presets dropdown */}
               {state.predefinedAOIs.length > 0 && (
-                <Button
-                  variant="text"
-                  size="small"
-                  endIcon={<ArrowDownIcon />}
-                  onClick={() => setShowPresets(!showPresets)}
-                  disabled={state.isDrawing || state.analysisState.status === 'analyzing'}
+                <FormControl 
+                  size="small" 
                   sx={{ 
-                    minWidth: 'auto',
-                    px: 1,
-                    py: 0.5,
-                    fontSize: '0.75rem',
-                    color: 'text.secondary',
+                    flex: 1,
+                    minWidth: 120
                   }}
                 >
-                  Presets
-                </Button>
+                  <Select
+                    value=""
+                    onChange={(e) => handlePredefinedAOISelect(e.target.value)}
+                    displayEmpty
+                    disabled={state.isDrawing || state.analysisState.status === 'analyzing'}
+                    sx={{ 
+                      fontSize: '0.75rem',
+                      '& .MuiSelect-select': {
+                        py: 0.5,
+                        px: 1,
+                      }
+                    }}
+                  >
+                    <MenuItem value="" disabled>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <LocationIcon fontSize="small" color="action" />
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                          Choose preset area
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                    {state.predefinedAOIs.map((aoi) => (
+                      <MenuItem key={aoi.id} value={aoi.id}>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                          {aoi.name}
+                        </Typography>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               )}
 
               {state.selectedAOI && (
                 <Button
                   variant="text"
                   size="small"
-                  startIcon={<ClearIcon />}
                   onClick={handleClearAOI}
                   color="error"
                   sx={{ 
                     minWidth: 'auto',
                     px: 1,
                     py: 0.5,
-                    fontSize: '0.75rem',
                   }}
                 >
-                  Clear
+                  <ClearIcon fontSize="small" />
                 </Button>
               )}
             </Box>
-
-            <Collapse in={showPresets}>
-              <Box sx={{ mb: 1 }}>
-                {state.predefinedAOIs.map((aoi) => (
-                  <Button
-                    key={aoi.id}
-                    variant="text"
-                    size="small"
-                    startIcon={<LocationIcon />}
-                    onClick={() => handlePredefinedAOISelect(aoi.id)}
-                    sx={{ 
-                      display: 'block',
-                      justifyContent: 'flex-start',
-                      width: '100%',
-                      py: 0.25,
-                      fontSize: '0.75rem',
-                      textTransform: 'none',
-                    }}
-                  >
-                    {aoi.name}
-                  </Button>
-                ))}
-              </Box>
-            </Collapse>
 
             {state.isDrawing && (
               <Alert severity="info" sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}>
