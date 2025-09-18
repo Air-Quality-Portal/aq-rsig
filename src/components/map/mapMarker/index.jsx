@@ -56,7 +56,7 @@ export const MarkerFeature = ({ vizItems, onSelectVizItem }) => {
 const addMarker = (map, longitude, latitude) => {
   const el = document.createElement('div');
   el.className = 'marker';
-  const markerColor = '#00b7eb';
+  const markerColor = '#34495E';
   el.innerHTML = getMarkerSVG(markerColor);
   let marker = new mapboxgl.Marker(el)
     .setLngLat([longitude, latitude])

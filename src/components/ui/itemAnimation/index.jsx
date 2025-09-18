@@ -87,60 +87,78 @@ export default function ItemAnimation({
       else if (ppm > 4) ticks = d3.utcYears(minDate, maxDate);
       else if (ppm > 2) ticks = d3.utcYears(minDate, maxDate, 2);
       else ticks = d3.utcYears(minDate, maxDate, 5);
-      g.selectAll('line.tick')
+      // Timeline baseline
+      g.append("line")
+        .attr("x1", 30)
+        .attr("x2", dims.w - 30)
+        .attr("stroke", "#e5e7eb") // lighter gray
+        .attr("stroke-width", 4);
+
+      // Grid/tick lines
+      g.selectAll("line.tick")
         .data(ticks)
         .enter()
-        .append('line')
-        .attr('class', 'tick')
-        .attr('x1', (d) => x(d))
-        .attr('x2', (d) => x(d))
-        .attr('y1', -dims.h * 0.15)
-        .attr('y2', dims.h * 0.15)
-        .attr('stroke', '#aaa');
-      g.append('line')
-        .attr('x1', 30)
-        .attr('x2', dims.w - 30)
-        .attr('stroke', '#d1d5db')
-        .attr('stroke-width', 2);
-      g.selectAll('text.ticklabel')
+        .append("line")
+        .attr("class", "tick")
+        .attr("x1", (d) => x(d))
+        .attr("x2", (d) => x(d))
+        .attr("y1", -dims.h * 0.25) // a bit longer
+        .attr("y2", dims.h * 0.25)
+        .attr("stroke", "#d1d5db") // subtle gray
+        .attr("stroke-dasharray", "2,2"); // dashed for readability
+
+      // Tick labels
+      g.selectAll("text.ticklabel")
         .data(ticks)
         .enter()
-        .append('text')
-        .attr('class', 'ticklabel')
-        .attr('x', (d) => x(d))
-        .attr('y', -dims.h * 0.35)
-        .attr('text-anchor', 'middle')
-        .attr('font-size', 10)
-        .attr('fill', '#6b7280')
-        .text((d) =>
-          ppm > 12 ? d3.utcFormat('%b %Y')(d) : d3.utcFormat('%Y')(d)
-        );
+        .append("text")
+        .attr("class", "ticklabel")
+        .attr("x", (d) => x(d))
+        .attr("y", -dims.h * 0.35)
+        .attr("text-anchor", "middle")
+        .attr("font-size", 11)
+        .attr("font-weight", 500)
+        .attr("fill", "#374151") // darker gray for contrast
+        .text((d) => (ppm > 12 ? d3.utcFormat("%b %Y")(d) : d3.utcFormat("%Y")(d)));
+
+      // Circles (dots)
       const circles = g
-        .selectAll('circle.dot')
+        .selectAll("circle.dot")
         .data(parsed)
         .enter()
-        .append('circle')
-        .attr('class', 'dot')
-        .attr('cx', (d) => x(d.date))
-        .attr('cy', 0)
-        .attr('r', 5)
-        .attr('fill', (d, i) => (i === activeIndex ? '#3b82f6' : '#9ca3af'))
-        .style('cursor', 'pointer')
-        .on('click', (_, d) => {
+        .append("circle")
+        .attr("class", "dot")
+        .attr("cx", (d) => x(d.date))
+        .attr("cy", 0)
+        .attr("r", 4) // smaller by default
+        .attr("fill", (d, i) =>
+          i === activeIndex ? "#34495E" : "#9ca3af"
+        )
+        .attr("stroke", (d, i) => (i === activeIndex ? "#34495E" : "none"))
+        .attr("stroke-width", 2)
+        .style("cursor", "pointer")
+        .on("click", (_, d) => {
           const idx = parsed.findIndex((p) => p.id === d.id);
           setActiveIndex(idx);
         });
-      g.selectAll('.active-circle').remove();
-      g.append('circle')
-        .attr('class', 'active-circle')
-        .attr('r', 5)
-        .attr('fill', '#3b82f6')
-        .attr('cx', x(parsed[activeIndex].date))
-        .attr('cy', 0)
-        .style('pointer-events', 'none');
+
+      // Highlighted active circle overlay
+      g.selectAll(".active-circle").remove();
+      g.append("circle")
+        .attr("class", "active-circle")
+        .attr("r", 6)
+        .attr("fill", "#34495E")
+        .attr("stroke", "#34495E")
+        .attr("stroke-width", 2)
+        .attr("cx", x(parsed[activeIndex].date))
+        .attr("cy", 0)
+        .style("pointer-events", "none");
+
+      // Tooltip via <title>
       circles
-        .append('title')
-        .text((d) => d3.utcFormat('%Y-%m-%d %H:%M:%S')(d.date));
+        .append("title")
+        .text((d) => d3.utcFormat("%Y-%m-%d %H:%M:%S")(d.date));
+
     };
     const zoom = d3
       .zoom()
@@ -218,46 +236,47 @@ export default function ItemAnimation({
     <Box sx={{ width: '100%', p: 1 }}>
       <Box
         sx={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
+          display: "flex",
+          flexDirection: "column", 
+          alignItems: "flex-start", 
+          gap: 1,
           mb: 0.5,
+          alignItems: "center",
+          justifyContent: "center",
+          width: "100%",  
         }}
       >
-        <Typography variant='subtitle2'>{title}</Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Tooltip title='Reset'>
-            <IconButton size='small' onClick={reset}>
-              <ReplayIcon fontSize='small' />
+        <Typography variant="subtitle2">{title}</Typography>
+
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
+          <Tooltip title="Reset">
+            <IconButton size="small" onClick={reset}>
+              <ReplayIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title='First'>
-            <IconButton size='small' onClick={() => move('first')}>
-              <FirstPageIcon fontSize='small' />
+          <Tooltip title="First">
+            <IconButton size="small" onClick={() => move("first")}>
+              <FirstPageIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title='Prev'>
-            <IconButton size='small' onClick={() => move('left')}>
-              <KeyboardArrowLeftIcon fontSize='small' />
+          <Tooltip title="Prev">
+            <IconButton size="small" onClick={() => move("left")}>
+              <KeyboardArrowLeftIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title={playing ? 'Pause' : 'Play'}>
-            <IconButton size='small' onClick={() => setPlaying((p) => !p)}>
-              {playing ? (
-                <PauseIcon fontSize='small' />
-              ) : (
-                <PlayArrowIcon fontSize='small' />
-              )}
+          <Tooltip title={playing ? "Pause" : "Play"}>
+            <IconButton size="small" onClick={() => setPlaying((p) => !p)}>
+              {playing ? <PauseIcon fontSize="small" /> : <PlayArrowIcon fontSize="small" />}
             </IconButton>
           </Tooltip>
-          <Tooltip title='Next'>
-            <IconButton size='small' onClick={() => move('right')}>
-              <KeyboardArrowRightIcon fontSize='small' />
+          <Tooltip title="Next">
+            <IconButton size="small" onClick={() => move("right")}>
+              <KeyboardArrowRightIcon fontSize="small" />
             </IconButton>
           </Tooltip>
-          <Tooltip title='Last'>
-            <IconButton size='small' onClick={() => move('last')}>
-              <LastPageIcon fontSize='small' />
+          <Tooltip title="Last">
+            <IconButton size="small" onClick={() => move("last")}>
+              <LastPageIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>
@@ -266,24 +285,53 @@ export default function ItemAnimation({
         <svg ref={svgRef} width={dims.w} height={dims.h} />
       </div>
       {parsed.length > 0 && (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-          <Box>
-            <Typography variant='caption'>Start</Typography>
-            <Typography variant='subtitle2'>{fmt(parsed[0].date)}</Typography>
-          </Box>
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant='caption'>Active</Typography>
-            <Typography variant='subtitle2'>
-              {fmt(parsed[activeIndex].date)}
-            </Typography>
-          </Box>
-          <Box sx={{ textAlign: 'right' }}>
-            <Typography variant='caption'>End</Typography>
-            <Typography variant='subtitle2'>
-              {fmt(parsed[parsed.length - 1].date)}
-            </Typography>
-          </Box>
+      <Box
+        sx={{
+          display: 'flex',
+          mt: 1,
+          px: 1,
+          py: 0.5,
+          bgcolor: '#fff',
+          borderRadius: 1,
+          boxShadow: '0 1px 1px rgba(0,0,0,0.0)',
+          height: 45, // set a fixed height for the whole bar
+        }}
+      >
+        {/* Start */}
+        <Box sx={{ textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
+          <Typography variant='caption' color='text.secondary' sx={{ fontSize: 10 }}>Start</Typography>
+          <Typography variant='subtitle2' sx={{ fontSize: 11 }}>{fmt(parsed[0].date)}</Typography>
         </Box>
+
+        {/* Active */}
+        <Box
+          sx={{
+            flex: 1,
+            mx: 1,
+            bgcolor: '#34495E',
+            color: 'white',
+            borderRadius: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            fontSize: 11,
+          }}
+        >
+          <Typography variant='caption' sx={{ fontSize: 10, opacity: 0.8 }}>Active</Typography>
+          <Typography variant='subtitle2' sx={{ fontSize: 11, fontWeight: 500 }}>
+            {fmt(parsed[activeIndex].date)}
+          </Typography>
+        </Box>
+
+        {/* End */}
+        <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
+          <Typography variant='caption' color='text.secondary' sx={{ fontSize: 10 }}>End</Typography>
+          <Typography variant='subtitle2' sx={{ fontSize: 11 }}>{fmt(parsed[parsed.length - 1].date)}</Typography>
+        </Box>
+      </Box>
+
+
       )}
     </Box>
   );
