@@ -488,7 +488,7 @@ export function DashboardContent({ loadingData }) {
               display: 'flex',
               flexDirection: 'column',
               height: 'fit-content',
-              maxHeight: '95vh'
+              maxHeight: '95vh',
             }}
             elevation={16}
           >
@@ -503,7 +503,7 @@ export function DashboardContent({ loadingData }) {
                 activeDate={currentActiveDate}
                 activeLayer={selectedRecord}
               />
-                  {activeBottomComponent === 'animation' &&
+              {activeBottomComponent === 'animation' &&
                 selectedDatasetId &&
                 rasterDatasets.length > 0 &&
                 selectedRecord?.type === 'raster' &&
@@ -544,10 +544,7 @@ export function DashboardContent({ loadingData }) {
               />
             </Stack>
           </Paper>
-          <MapControls
-            openDrawer={openDrawer}
-            setOpenDrawer={setOpenDrawer}
-          />
+          <MapControls openDrawer={openDrawer} setOpenDrawer={setOpenDrawer} />
           {activeBottomComponent === 'two-date-switch' &&
             selectedRecord?.type === 'point-cloud' &&
             Array.isArray(layerData?.available_dates) &&
@@ -601,89 +598,96 @@ export function DashboardContent({ loadingData }) {
             isDrawingAOI={aoiState.isDrawing}
             datasetToRemove={datasetToRemove}
           />
-          {activeBottomComponent === 'station-chart' && isVisible && selectedStation && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '10px',
-                left: '10px',
-                width: 'calc(100% - 20px)',
-                height: '300px',
-                backgroundColor: 'white',
-                border: '1px solid #ccc',
-                borderRadius: '8px',
-                zIndex: 1000,
-                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              {isLoading && <LoadingSpinner />}
-              {error && (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '100%',
-                    color: 'red',
-                  }}
-                >
-                  <p>Error loading data: {error.message}</p>
-                  <CloseButton handleClose={hideStationChartWithPriority} />
-                </div>
-              )}
-              {!isLoading && !error && (
-                <>
-                  {chartDatasets && chartDatasets.length > 0 ? (
-                    <ChartProvider>
+          {activeBottomComponent === 'station-chart' &&
+            isVisible &&
+            selectedStation && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '10px',
+                  left: '10px',
+                  width: 'calc(100% - 20px)',
+                  height: '300px',
+                  backgroundColor: 'white',
+                  border: '1px solid #ccc',
+                  borderRadius: '8px',
+                  zIndex: 1000,
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                {isLoading && <LoadingSpinner />}
+                {error && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: '100%',
+                      color: 'red',
+                    }}
+                  >
+                    <p>Error loading data: {error.message}</p>
+                    <CloseButton handleClose={hideStationChartWithPriority} />
+                  </div>
+                )}
+                {!isLoading && !error && (
+                  <>
+                    {chartDatasets && chartDatasets.length > 0 ? (
+                      <ChartProvider>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '16px 8px',
+                            borderBottom: '1px solid #eee',
+                          }}
+                        >
+                          <h3
+                            style={{
+                              margin: 0,
+                              fontSize: '20px',
+                              fontWeight: '600',
+                            }}
+                          >
+                            {`Station ${selectedStation.station_code} - ${selectedStation.city || 'Unknown'}`}
+                          </h3>
+                          <div style={{ zIndex: '10000' }}>
+                            <CloseButton
+                              handleClose={hideStationChartWithPriority}
+                            />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, padding: '16px' }}>
+                          <LineChart datasets={chartDatasets} />
+                        </div>
+                      </ChartProvider>
+                    ) : (
                       <div
                         style={{
                           display: 'flex',
-                          justifyContent: 'space-between',
+                          flexDirection: 'column',
                           alignItems: 'center',
-                          padding: '16px 8px',
-                          borderBottom: '1px solid #eee',
+                          justifyContent: 'center',
+                          height: '100%',
                         }}
                       >
-                        <h3
-                          style={{
-                            margin: 0,
-                            fontSize: '20px',
-                            fontWeight: '600',
-                          }}
-                        >
-                          {`Station ${selectedStation.station_code} - ${selectedStation.city || 'Unknown'}`}
-                        </h3>
-                        <div style={{ zIndex: '10000' }}>
-                          <CloseButton handleClose={hideStationChartWithPriority} />
-                        </div>
+                        <p>
+                          No data available for this station in the selected
+                          time range.
+                        </p>
+                        <CloseButton
+                          handleClose={hideStationChartWithPriority}
+                        />
                       </div>
-                      <div style={{ flex: 1, padding: '16px' }}>
-                        <LineChart datasets={chartDatasets} />
-                      </div>
-                    </ChartProvider>
-                  ) : (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%',
-                      }}
-                    >
-                      <p>
-                        No data available for this station in the selected time range.
-                      </p>
-                      <CloseButton handleClose={hideStationChartWithPriority} />
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+                    )}
+                  </>
+                )}
+              </div>
+            )}
         </MainMap>
         <PersistentDrawerRight
           open={openDrawer}
@@ -693,7 +697,10 @@ export function DashboardContent({ loadingData }) {
           updateActiveDataset={updateActiveDataset}
         />
         {activeBottomComponent === 'analysis-results' && hasResults && (
-          <AnalysisResults onClose={clearResultsWithPriority} position='bottom' />
+          <AnalysisResults
+            onClose={clearResultsWithPriority}
+            position='bottom'
+          />
         )}
       </div>
       {loadingData && <LoadingSpinner />}

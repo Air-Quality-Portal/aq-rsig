@@ -123,26 +123,41 @@ export const zoomToBounds = (map, bounds, options = {}) => {
   }
 };
 
-export const buildRasterTileUrl = (collection, itemId, options = {}) => {
-  console.log('🔧 buildRasterTileUrl Debug:', )
+export const buildRasterTileUrl = (
+  collection,
+  itemId,
+  options = {},
+  feature = null
+) => {
+
   const {
     assets = 'cog_default',
-    colormap = 'plasma',
+    colormap = 'viridis',
     rescale = '0,255',
     nodata = '-9999',
   } = options;
 
-  const baseUrl = 'https://dev.openveda.cloud/api/raster';
+  if (
+    feature &&
+    feature.assets &&
+    feature.assets.cog_default &&
+    feature.assets.cog_default.href
+  ) {
+    const s3Url = feature.assets.cog_default.href;
+    const encodedS3Url = encodeURIComponent(s3Url);
 
-  return (
-    `${baseUrl}/collections/${collection}/tiles/WebMercatorQuad/{z}/{x}/{y}@1x` +
-    `?item=${itemId}` +
-    `&assets=${assets}` +
-    `&bidx=1` +
-    `&colormap_name=${colormap}` +
-    `&rescale=${rescale}` +
-    `&nodata=${nodata}`
-  );
+
+    const baseUrl =
+      'https://dev.openveda.cloud/api/raster/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x';
+
+    return (
+      `${baseUrl}` +
+      `?url=${encodedS3Url}` +
+      `&bidx=1` +
+      `&rescale=${rescale}` +
+      `&colormap_name=${colormap}`
+    );
+  }
 };
 
 export const buildNetCDF2DTileUrl = (
@@ -152,7 +167,6 @@ export const buildNetCDF2DTileUrl = (
   varValues,
   options = {}
 ) => {
-  // Return an empty array if varValues is not provided or is empty
   if (!varValues || Object.keys(varValues).length === 0) {
     return [];
   }

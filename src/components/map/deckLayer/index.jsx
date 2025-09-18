@@ -4,11 +4,7 @@ import { Tile3DLayer, TileLayer } from '@deck.gl/geo-layers';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { Matrix4 } from '@math.gl/core';
 import { useMapbox } from '../../../context/mapContext';
-import {
-  getLayerId,
-  buildRasterTileUrl,
-  buildNetCDF2DTileUrl,
-} from './utils';
+import { getLayerId, buildRasterTileUrl, buildNetCDF2DTileUrl } from './utils';
 
 function handleStationClick(clickedFeature, onStationClick) {
   onStationClick(clickedFeature);
@@ -50,7 +46,9 @@ const formatRescaleValues = (rescaleValues) => {
   ) {
     return null;
   }
-  return rescaleValues.map(num => Number.parseFloat(num).toExponential()).join(',');
+  return rescaleValues
+    .map((num) => Number.parseFloat(num).toExponential())
+    .join(',');
 };
 
 const flyToTilesetCenter = (tileset, map, fallbackEPTBounds) => {
@@ -124,6 +122,8 @@ export function DeckGlLayerManager({
   datasetToRemove,
 }) {
   const [managedLayers, setManagedLayers] = useState({});
+  const [layerRefreshCounter, setLayerRefreshCounter] = useState(0);
+  const [currentRasterItem, setCurrentRasterItem] = useState(null);
   const mapContext = useMapbox();
   const deckOverlay = mapContext?.deckOverlay;
 
@@ -143,6 +143,27 @@ export function DeckGlLayerManager({
     }
   }, [datasetToRemove]);
 
+  // Clear raster layers when item changes
+  useEffect(() => {
+    if (galleryType === 'raster' && layerData?.features?.[0]) {
+      const newItemId = layerData.features[0].id;
+
+      if (currentRasterItem && currentRasterItem !== newItemId) {
+        setManagedLayers((prev) => {
+          const updated = { ...prev };
+          if (updated[datasetId]) {
+            delete updated[datasetId];
+          }
+          return updated;
+        });
+
+        setLayerRefreshCounter((prev) => prev + 1);
+      }
+
+      setCurrentRasterItem(newItemId);
+    }
+  }, [layerData?.features?.[0]?.id, galleryType, datasetId, currentRasterItem]);
+
   const getOrderedLayers = () => {
     const ordered = [];
     const wanted = new Set(layerOpacityList.map((l) => l.id));
@@ -156,9 +177,7 @@ export function DeckGlLayerManager({
     if (aoiGeometry && !isDrawingAOI) {
       const aoiData = {
         type: 'FeatureCollection',
-        features: [
-          { type: 'Feature', properties: {}, geometry: aoiGeometry },
-        ],
+        features: [{ type: 'Feature', properties: {}, geometry: aoiGeometry }],
       };
       const aoiLayer = new GeoJsonLayer({
         id: 'aoi-visualization',
@@ -185,6 +204,7 @@ export function DeckGlLayerManager({
 
   useEffect(() => {
     if (!datasetId) return;
+
     if (!layerData) {
       setManagedLayers((prev) => {
         if (Object.prototype.hasOwnProperty.call(prev, datasetId)) {
@@ -227,13 +247,16 @@ export function DeckGlLayerManager({
         newLayers.push(pointCloudLayer);
         break;
       }
+
       case 'raster': {
         const feature =
           Array.isArray(layerData.features) && layerData.features.length > 0
             ? layerData.features[0]
             : null;
         if (!feature) break;
+
         const { collection, id: itemId, properties } = feature;
+        const datetime = properties?.datetime || properties?.start_datetime;
 
         const tileParams = {
           assets: 'cog_default',
@@ -245,10 +268,12 @@ export function DeckGlLayerManager({
         if (spatialSubset) {
           tileParams.bbox = `${spatialSubset.west},${spatialSubset.south},${spatialSubset.east},${spatialSubset.north}`;
         }
-        const tileUrl = buildRasterTileUrl(collection, itemId, tileParams);
+
+        const tileUrl = buildRasterTileUrl(collection, itemId, tileParams, feature);
+        const uniqueLayerId = `raster-${datasetId}-${layerRefreshCounter}-${itemId.slice(-8)}`;
 
         const rasterLayer = new TileLayer({
-          id: getLayerId('raster', `${datasetId}-${itemId}`),
+          id: uniqueLayerId,
           data: tileUrl,
           minZoom: 0,
           maxZoom: 19,
@@ -256,23 +281,35 @@ export function DeckGlLayerManager({
           visible,
           pickable: true,
           opacity: dynamicOpacity,
+          updateTriggers: {
+            getTileData: [itemId, datetime, layerRefreshCounter],
+          },
+          refinementStrategy: 'never',
+
           renderSubLayers: (props) => {
             const {
               bbox: { west, south, east, north },
             } = props.tile;
+
             if (
               spatialSubset &&
               !tileIntersectsBounds(west, south, east, north, spatialSubset)
             ) {
               return null;
             }
+
             return new BitmapLayer({
               ...props,
+              id: `bitmap-${props.tile.id}-${layerRefreshCounter}`,
               data: null,
               image: props.data,
               bounds: [west, south, east, north],
+              updateTriggers: {
+                getImage: [itemId, datetime, layerRefreshCounter],
+              },
             });
           },
+
           onClick: (info) => {
             if (onStationClick)
               onStationClick({
@@ -280,13 +317,15 @@ export function DeckGlLayerManager({
                 feature,
                 tile: info.tile,
                 coordinate: info.coordinate,
-                datetime: properties?.datetime || properties?.start_datetime,
+                datetime: datetime,
               });
           },
         });
+
         newLayers.push(rasterLayer);
         break;
       }
+
       case 'netcdf-2d': {
         const { conceptId, datetime, variable, ...rest } = layerData;
         if (!conceptId || !datetime || !variable) break;
@@ -347,7 +386,7 @@ export function DeckGlLayerManager({
                 east < effectiveBounds.west ||
                 west > effectiveBounds.east ||
                 north < effectiveBounds.south ||
-                south > effectiveBounds.north
+                south > effectiveBounds.south
               ) {
                 return null;
               }
@@ -365,6 +404,7 @@ export function DeckGlLayerManager({
         });
         break;
       }
+
       case 'feature': {
         const geojsonData = layerData;
         let filtered = geojsonData.features;
@@ -425,9 +465,11 @@ export function DeckGlLayerManager({
         newLayers.push(stationLayer);
         break;
       }
+
       default:
         newLayers = [];
     }
+
     setManagedLayers((prev) => ({ ...prev, [datasetId]: newLayers }));
   }, [
     layerData,
@@ -441,6 +483,7 @@ export function DeckGlLayerManager({
     spatialSubset,
     allActiveDatasets,
     pointCloudDate,
+    layerRefreshCounter,
   ]);
 
   useEffect(() => {
