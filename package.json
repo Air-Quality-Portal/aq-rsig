@@ -9,6 +9,7 @@
     "@deck.gl/extensions": "^9.1.14",
     "@deck.gl/layers": "^9.1.14",
     "@deck.gl/react": "^9.1.14",
+    "@deck.gl/geo-layers": "^9.1.14",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@fortawesome/fontawesome-svg-core": "^6.6.0",
