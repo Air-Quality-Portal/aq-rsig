@@ -224,27 +224,24 @@ export function DeckGlLayerManager({
     switch (galleryType) {
       case 'point-cloud': {
         const template = layerData?.tilesetTemplate || activeLayerUrl || '';
-        const dateStr =
-          pointCloudDate ||
-          layerData?.available_dates?.[0] ||
-          (Array.isArray(layerData?.datasetInfo?.available_dates)
-            ? layerData.datasetInfo.available_dates[0]
-            : null);
-        if (!template || !dateStr) break;
-        const layerId = `${getLayerId('pointcloud', datasetId)}-${dateStr}`;
-        const url = template.replace('{DateTime}', dateStr);
-        const pointCloudLayer = new Tile3DLayer({
-          id: layerId,
-          data: url,
-          pickable: true,
-          visible,
-          opacity: dynamicOpacity,
-          onTilesetLoad: (tileset) => {
-            const fallbackBounds = layerData?.asset?.ept?.bounds;
-            flyToTilesetCenter(tileset, mapContext?.map, fallbackBounds);
-          },
-        });
-        newLayers.push(pointCloudLayer);
+        if (!template) break;
+
+        for (let i = 1; i <= 19; i++) {
+          const layerId = `${getLayerId('pointcloud', datasetId)}-${i}`;
+          const url = template.replace('{i}', i);
+          const pointCloudLayer = new Tile3DLayer({
+            id: layerId,
+            data: url,
+            pickable: true,
+            visible,
+            opacity: dynamicOpacity,
+            onTilesetLoad: (tileset) => {
+              const fallbackBounds = layerData?.asset?.ept?.bounds;
+              flyToTilesetCenter(tileset, mapContext?.map, fallbackBounds);
+            },
+          });
+          newLayers.push(pointCloudLayer);
+        }
         break;
       }
 
@@ -269,7 +266,12 @@ export function DeckGlLayerManager({
           tileParams.bbox = `${spatialSubset.west},${spatialSubset.south},${spatialSubset.east},${spatialSubset.north}`;
         }
 
-        const tileUrl = buildRasterTileUrl(collection, itemId, tileParams, feature);
+        const tileUrl = buildRasterTileUrl(
+          collection,
+          itemId,
+          tileParams,
+          feature
+        );
         const uniqueLayerId = `raster-${datasetId}-${layerRefreshCounter}-${itemId.slice(-8)}`;
 
         const rasterLayer = new TileLayer({

@@ -545,7 +545,7 @@ export function DashboardContent({ loadingData }) {
             </Stack>
           </Paper>
           <MapControls openDrawer={openDrawer} setOpenDrawer={setOpenDrawer} />
-          {activeBottomComponent === 'two-date-switch' &&
+          {/* {activeBottomComponent === 'two-date-switch' &&
             selectedRecord?.type === 'point-cloud' &&
             Array.isArray(layerData?.available_dates) &&
             layerData.available_dates.length > 0 && (
@@ -562,7 +562,7 @@ export function DashboardContent({ loadingData }) {
                   }));
                 }}
               />
-            )}
+            )} */}
           <DeckGlLayerManager
             activeLayerUrl={activeLayerUrl}
             updateActiveLayers={updateActiveLayers}
