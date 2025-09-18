@@ -124,6 +124,7 @@ export const zoomToBounds = (map, bounds, options = {}) => {
 };
 
 export const buildRasterTileUrl = (collection, itemId, options = {}) => {
+  console.log('🔧 buildRasterTileUrl Debug:', )
   const {
     assets = 'cog_default',
     colormap = 'plasma',
