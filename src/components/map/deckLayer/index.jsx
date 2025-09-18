@@ -418,7 +418,7 @@ export function DeckGlLayerManager({
               style: {
                 backgroundColor: '#f8f8f8',
                 fontSize: '0.8em',
-                color: '#333',
+                color: '#34495E',
               },
             },
         });

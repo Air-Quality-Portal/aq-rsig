@@ -462,7 +462,7 @@ export function DashboardContent({ loadingData }) {
         sx={{
           position: 'absolute',
           top: '20px',
-          left: isSidebarOpen ? '320px' : '20px',
+          left: isSidebarOpen ? '300px' : '20px',
           zIndex: 1301,
           backgroundColor: 'white',
           transition: 'left 0.2s ease-in-out',
@@ -482,13 +482,13 @@ export function DashboardContent({ loadingData }) {
           <Paper
             className='title-container'
             sx={{
-              width: '310px',
+              width: '350px',
               transition: 'transform 0.2s ease-in-out, width 0.2s ease-in-out',
               transform: isSidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
               display: 'flex',
               flexDirection: 'column',
               height: 'fit-content',
-              maxHeight: '95vh',
+              maxHeight: '95vh'
             }}
             elevation={16}
           >
@@ -503,6 +503,36 @@ export function DashboardContent({ loadingData }) {
                 activeDate={currentActiveDate}
                 activeLayer={selectedRecord}
               />
+                  {activeBottomComponent === 'animation' &&
+                selectedDatasetId &&
+                rasterDatasets.length > 0 &&
+                selectedRecord?.type === 'raster' &&
+                selectedRecord?.id === selectedDatasetId &&
+                Array.isArray(layerData?.features) &&
+                layerData.features.length > 0 && (
+                  <div
+                    style={{
+                      // position: 'absolute',
+                      right: 10,
+                      minWidth: 0,
+                      bottom: '10px',
+                      width: '100%',
+                      zIndex: 1302,
+                      background: 'white',
+                      borderRadius: 8,
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    }}
+                  >
+                    <ItemAnimation
+                      items={layerData.features}
+                      onFrameChange={handleFrameChange}
+                      title={titleDropdown}
+                      initialAutoPlay={false}
+                      speedMs={700}
+                    />
+                  </div>
+                )}
+
               <RecordDetailView
                 record={selectedRecord}
                 allActiveDatasets={layerDisplayList}
@@ -518,34 +548,6 @@ export function DashboardContent({ loadingData }) {
             openDrawer={openDrawer}
             setOpenDrawer={setOpenDrawer}
           />
-          {activeBottomComponent === 'animation' &&
-            selectedDatasetId &&
-            rasterDatasets.length > 0 &&
-            selectedRecord?.type === 'raster' &&
-            selectedRecord?.id === selectedDatasetId &&
-            Array.isArray(layerData?.features) &&
-            layerData.features.length > 0 && (
-              <div
-                style={{
-                  position: 'absolute',
-                  right: 10,
-                  bottom: '10px',
-                  width: 420,
-                  zIndex: 1302,
-                  background: 'white',
-                  borderRadius: 8,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                }}
-              >
-                <ItemAnimation
-                  items={layerData.features}
-                  onFrameChange={handleFrameChange}
-                  title={titleDropdown}
-                  initialAutoPlay={false}
-                  speedMs={700}
-                />
-              </div>
-            )}
           {activeBottomComponent === 'two-date-switch' &&
             selectedRecord?.type === 'point-cloud' &&
             Array.isArray(layerData?.available_dates) &&
