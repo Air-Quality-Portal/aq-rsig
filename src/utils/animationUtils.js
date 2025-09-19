@@ -1,21 +1,46 @@
-// Utility functions for generating animation features from dataset metadata
+// Fixed utility functions for generating animation features from dataset metadata
+
+/**
+ * Parse date string and extract UTC year, month, day to avoid timezone issues
+ */
+function parseUTCDate(dateString) {
+  // Parse ISO date string directly to avoid timezone conversion
+  const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return {
+      year: parseInt(match[1], 10),
+      month: parseInt(match[2], 10) - 1, // Convert to 0-based month
+      day: parseInt(match[3], 10)
+    };
+  }
+  
+  // Fallback to regular Date parsing if format doesn't match
+  const date = new Date(dateString);
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth(),
+    day: date.getUTCDate()
+  };
+}
 
 /**
  * Generate monthly features for animation based on start and end dates
  */
 export function generateMonthlyFeatures(startDate, endDate, datasetInfo) {
   const features = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
   
-  // Set to first day of start month
-  const current = new Date(start.getFullYear(), start.getMonth(), 1);
-  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+  // Parse start and end dates in UTC to avoid timezone issues
+  const startParsed = parseUTCDate(startDate);
+  const endParsed = parseUTCDate(endDate);
+  
+  // Create UTC dates for consistent behavior
+  const current = new Date(Date.UTC(startParsed.year, startParsed.month, 1));
+  const endMonth = new Date(Date.UTC(endParsed.year, endParsed.month, 1));
   
   let index = 0;
   while (current <= endMonth) {
-    const year = current.getFullYear();
-    const month = String(current.getMonth() + 1).padStart(2, '0');
+    const year = current.getUTCFullYear();
+    const month = String(current.getUTCMonth() + 1).padStart(2, '0');
     const dateString = `${year}-${month}-01T00:00:00Z`;
     
     features.push({
@@ -26,7 +51,7 @@ export function generateMonthlyFeatures(startDate, endDate, datasetInfo) {
         start_datetime: dateString,
         date: dateString,
         year: year,
-        month: month,
+        month: parseInt(month, 10),
         index: index,
         dataset_id: datasetInfo.id,
         dataset_type: datasetInfo.type
@@ -34,8 +59,8 @@ export function generateMonthlyFeatures(startDate, endDate, datasetInfo) {
       geometry: null // NetCDF data doesn't have point geometry
     });
     
-    // Move to next month
-    current.setMonth(current.getMonth() + 1);
+    // Move to next month using UTC methods
+    current.setUTCMonth(current.getUTCMonth() + 1);
     index++;
   }
   
@@ -47,17 +72,24 @@ export function generateMonthlyFeatures(startDate, endDate, datasetInfo) {
  */
 export function generateDailyFeatures(startDate, endDate, datasetInfo) {
   const features = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
   
-  const current = new Date(start);
+  // Parse dates in UTC
+  const startParsed = parseUTCDate(startDate);
+  const endParsed = parseUTCDate(endDate);
+  
+  const current = new Date(Date.UTC(startParsed.year, startParsed.month, startParsed.day));
+  const end = new Date(Date.UTC(endParsed.year, endParsed.month, endParsed.day));
+  
   let index = 0;
   
   while (current <= end) {
-    const dateString = current.toISOString();
+    const year = current.getUTCFullYear();
+    const month = String(current.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(current.getUTCDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}T00:00:00Z`;
     
     features.push({
-      id: `${datasetInfo.id}-${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`,
+      id: `${datasetInfo.id}-${year}-${month}-${day}`,
       type: 'Feature',
       properties: {
         datetime: dateString,
@@ -70,8 +102,8 @@ export function generateDailyFeatures(startDate, endDate, datasetInfo) {
       geometry: null
     });
     
-    // Move to next day
-    current.setDate(current.getDate() + 1);
+    // Move to next day using UTC methods
+    current.setUTCDate(current.getUTCDate() + 1);
     index++;
   }
   
@@ -83,17 +115,37 @@ export function generateDailyFeatures(startDate, endDate, datasetInfo) {
  */
 export function generateHourlyFeatures(startDate, endDate, datasetInfo) {
   const features = [];
+  
+  // For hourly data, parse the full datetime including hours
   const start = new Date(startDate);
   const end = new Date(endDate);
   
-  const current = new Date(start);
+  // Create UTC dates to avoid timezone issues
+  const current = new Date(Date.UTC(
+    start.getUTCFullYear(),
+    start.getUTCMonth(),
+    start.getUTCDate(),
+    start.getUTCHours()
+  ));
+  
+  const endUTC = new Date(Date.UTC(
+    end.getUTCFullYear(),
+    end.getUTCMonth(),
+    end.getUTCDate(),
+    end.getUTCHours()
+  ));
+  
   let index = 0;
   
-  while (current <= end) {
-    const dateString = current.toISOString();
+  while (current <= endUTC) {
+    const year = current.getUTCFullYear();
+    const month = String(current.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(current.getUTCDate()).padStart(2, '0');
+    const hour = String(current.getUTCHours()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}T${hour}:00:00Z`;
     
     features.push({
-      id: `${datasetInfo.id}-${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}-${String(current.getHours()).padStart(2, '0')}`,
+      id: `${datasetInfo.id}-${year}-${month}-${day}-${hour}`,
       type: 'Feature',
       properties: {
         datetime: dateString,
@@ -106,8 +158,8 @@ export function generateHourlyFeatures(startDate, endDate, datasetInfo) {
       geometry: null
     });
     
-    // Move to next hour
-    current.setHours(current.getHours() + 1);
+    // Move to next hour using UTC methods
+    current.setUTCHours(current.getUTCHours() + 1);
     index++;
   }
   
@@ -183,4 +235,24 @@ export function getAnimationSpeed(timeInterval) {
     default:
       return 700; // Default speed
   }
+}
+
+/**
+ * Debug function to test date generation
+ */
+export function debugDateGeneration(datasetInfo) {
+  console.log('Dataset:', datasetInfo.id);
+  console.log('Start date:', datasetInfo.start_date);
+  console.log('End date:', datasetInfo.end_date);
+  console.log('Time interval:', datasetInfo.time_interval);
+  
+  const features = generateAnimationFeatures(datasetInfo);
+  console.log('Generated features count:', features.length);
+  
+  if (features.length > 0) {
+    console.log('First feature:', features[0]);
+    console.log('Last feature:', features[features.length - 1]);
+  }
+  
+  return features;
 }
