@@ -222,88 +222,117 @@ export function DeckGlLayerManager({
     let newLayers = [];
 
     switch (galleryType) {
+      ///point cloud layer with trajectory layer
+      // case 'point-cloud': {
+      //   const template = layerData?.tilesetTemplate || activeLayerUrl || '';
+      //   if (!template) break;
+
+      //   // Wrap async logic in IIFE inside useEffect
+      //   (async () => {
+      //     const newLayers = [];
+
+      //     // Add point cloud layers
+      //     for (let i = 1; i <= 19; i++) {
+      //       const layerId = `${getLayerId('pointcloud', datasetId)}-${i}`;
+      //       const url = template.replace('{i}', i);
+
+      //       const pointCloudLayer = new Tile3DLayer({
+      //         id: layerId,
+      //         data: url,
+      //         pickable: true,
+      //         visible,
+      //         opacity: dynamicOpacity,
+      //         onTilesetLoad: (tileset) => {
+      //           const fallbackBounds = layerData?.asset?.ept?.bounds;
+      //           flyToTilesetCenter(tileset, mapContext?.map, fallbackBounds);
+      //         },
+      //       });
+
+      //       newLayers.push(pointCloudLayer);
+      //     }
+
+      //     // Fetch GeoJSON trajectory file
+      //     try {
+      //       const response = await fetch('https://rsig-point-cloud.s3.us-west-2.amazonaws.com/trajectory_line_sampled.geojson');
+      //       const trajectoryGeoJson = await response.json();
+
+      //       // CONUS bounds
+      //       const conusBounds = {
+      //         west: -125,
+      //         east: -66,
+      //         north: 149,
+      //         south: 25,
+      //       };
+
+      //       // Filter coordinates to only include CONUS region
+      //       const filteredCoordinates =
+      //         trajectoryGeoJson.geometry.coordinates.filter(([lon, lat]) => {
+      //           return (
+      //             lon >= conusBounds.west &&
+      //             lon <= conusBounds.east &&
+      //             lat >= conusBounds.south &&
+      //             lat <= conusBounds.north
+      //           );
+      //         });
+
+      //       const conusTrajectory = {
+      //         type: 'Feature',
+      //         geometry: {
+      //           type: 'LineString',
+      //           coordinates: filteredCoordinates,
+      //         },
+      //       };
+
+      //       const trajectoryLayer = new GeoJsonLayer({
+      //         id: 'satellite-trajectory-layer',
+      //         data: conusTrajectory,
+      //         pickable: true,
+      //         stroked: true,
+      //         filled: false,
+      //         lineWidthScale: 20,
+      //         lineWidthMinPixels: 2,
+      //         getLineColor: [0, 255, 0],
+      //         getLineWidth: 2,
+      //         visible: true,
+      //         modelMatrix: new Matrix4().translate([0, 0, 0]),
+      //       });
+
+      //       newLayers.push(trajectoryLayer);
+      //     } catch (err) {
+      //       console.error('Failed to load trajectory GeoJSON:', err);
+      //     }
+
+      //     // Set layers
+      //     setManagedLayers((prev) => ({ ...prev, [datasetId]: newLayers }));
+      //   })();
+
+      //   break;
+      // }
       case 'point-cloud': {
         const template = layerData?.tilesetTemplate || activeLayerUrl || '';
         if (!template) break;
 
-        // Wrap async logic in IIFE inside useEffect
-        (async () => {
-          const newLayers = [];
+        // Add point cloud layers
+        for (let i = 1; i <= 19; i++) {
+          const layerId = `${getLayerId('pointcloud', datasetId)}-${i}`;
+          const url = template.replace('{i}', i);
 
-          // Add point cloud layers
-          for (let i = 1; i <= 19; i++) {
-            const layerId = `${getLayerId('pointcloud', datasetId)}-${i}`;
-            const url = template.replace('{i}', i);
+          const pointCloudLayer = new Tile3DLayer({
+            id: layerId,
+            data: url,
+            pickable: true,
+            visible,
+            opacity: dynamicOpacity,
+            onTilesetLoad: (tileset) => {
+              const fallbackBounds = layerData?.asset?.ept?.bounds;
+              flyToTilesetCenter(tileset, mapContext?.map, fallbackBounds);
+            },
+          });
 
-            const pointCloudLayer = new Tile3DLayer({
-              id: layerId,
-              data: url,
-              pickable: true,
-              visible,
-              opacity: dynamicOpacity,
-              onTilesetLoad: (tileset) => {
-                const fallbackBounds = layerData?.asset?.ept?.bounds;
-                flyToTilesetCenter(tileset, mapContext?.map, fallbackBounds);
-              },
-            });
+          newLayers.push(pointCloudLayer);
+        }
 
-            newLayers.push(pointCloudLayer);
-          }
-
-          // Fetch GeoJSON trajectory file
-          try {
-            const response = await fetch('https://rsig-point-cloud.s3.us-west-2.amazonaws.com/trajectory_line_sampled.geojson');
-            const trajectoryGeoJson = await response.json();
-
-            // CONUS bounds
-            const conusBounds = {
-              west: -125,
-              east: -66,
-              north: 149,
-              south: 25,
-            };
-
-            // Filter coordinates to only include CONUS region
-            const filteredCoordinates =
-              trajectoryGeoJson.geometry.coordinates.filter(([lon, lat]) => {
-                return (
-                  lon >= conusBounds.west &&
-                  lon <= conusBounds.east &&
-                  lat >= conusBounds.south &&
-                  lat <= conusBounds.north
-                );
-              });
-
-            const conusTrajectory = {
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: filteredCoordinates,
-              },
-            };
-
-            const trajectoryLayer = new GeoJsonLayer({
-              id: 'satellite-trajectory-layer',
-              data: conusTrajectory,
-              pickable: true,
-              stroked: true,
-              filled: false,
-              lineWidthScale: 20,
-              lineWidthMinPixels: 2,
-              getLineColor: [0, 255, 0],
-              getLineWidth: 2,
-              visible: true,
-              modelMatrix: new Matrix4().translate([0, 0, 0]),
-            });
-
-            newLayers.push(trajectoryLayer);
-          } catch (err) {
-            console.error('Failed to load trajectory GeoJSON:', err);
-          }
-
-          // Set layers
-          setManagedLayers((prev) => ({ ...prev, [datasetId]: newLayers }));
-        })();
+        setManagedLayers((prev) => ({ ...prev, [datasetId]: newLayers }));
 
         break;
       }
