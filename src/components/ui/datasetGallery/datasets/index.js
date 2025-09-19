@@ -66,7 +66,7 @@ export const galleryData = {
   Lidar: [
     {
       id: 'calipso-point-cloud',
-      name: 'CALIPSO 532 nm Backscatter (Level 1, V4-51)',
+      name: 'CALIPSO 532 nm Backscatter (Level 1) - [June 30 2023]',
       type: 'point-cloud',
       url: 'https://rsig-point-cloud.s3.us-west-2.amazonaws.com/outputs/calipso_2023-06-30_{i}/ept-tileset/tileset.json',
       thumbnailUrl: '/path/to/thumbnail1.jpg',
@@ -75,8 +75,8 @@ export const galleryData = {
       units: ' km⁻¹ sr⁻¹',
       info: 'https://catalog.data.gov/dataset/calipso-lidar-level-2-aerosol-profile-v4-51-06c1f',
       time_interval: '100minutes',
-      start_date: '2006-06-11T00:00:00+00:00',
-      end_date: '2023-06-31T00:00:00+00:00',
+      start_date: '2023-06-30T21:39:53',
+      end_date: '2023-06-30T21:39:53',
       available_dates: ['2020-07-20T07:15:43Z', '2023-06-31T21:39:53Z'],
     },
   ],
