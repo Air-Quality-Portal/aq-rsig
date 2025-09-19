@@ -173,6 +173,8 @@ export const buildNetCDF2DTileUrl = (
 
   const baseUrl =
     'https://v4jec6i5c0.execute-api.us-west-2.amazonaws.com/tiles/WebMercatorQuad/{z}/{x}/{y}';
+  // const baseUrl =
+  //   'https://dev.openveda.cloud/api/titiler-cmr/tiles/WebMercatorQuad/{z}/{x}/{y}';
 
   const baseParams = {
     concept_id: 'C2837626477-GES_DISC',
