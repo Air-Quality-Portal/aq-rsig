@@ -36,7 +36,7 @@ const pointLayer = {
   source: 'measurePoints',
   paint: {
     'circle-radius': 4.5,
-    'circle-color': '#00BFFF',
+    'circle-color': '#34495E',
   },
   filter: ['in', '$type', 'Point'],
 };

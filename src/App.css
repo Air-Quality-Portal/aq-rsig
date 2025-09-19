@@ -14,7 +14,7 @@
 }
 
 .App-header {
-  background-color: #282c34;
+  background-color: #34495E;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -60,5 +60,5 @@ body,
 }
 
 :root {
-  --main-blue: #082a64;
+  --main-blue: #34495E;
 }
