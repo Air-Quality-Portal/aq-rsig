@@ -17,7 +17,7 @@ export default function ItemAnimation({
   onFrameChange,
   title = 'Timeline',
   initialAutoPlay = false,
-  speedMs = 800,
+  speedMs = 2000,
 }) {
   const svgRef = useRef(null);
   const zoomRef = useRef(null);
@@ -40,6 +40,127 @@ export default function ItemAnimation({
   }, [items]);
 
   const dates = useMemo(() => parsed.map((p) => p.date), [parsed]);
+
+  // Detect time interval and create appropriate formatters
+  const { timeInterval, formatters } = useMemo(() => {
+    if (!parsed.length) {
+      return {
+        timeInterval: 'unknown',
+        formatters: {
+          main: d3.utcFormat('%Y-%m-%d'),
+          tooltip: d3.utcFormat('%Y-%m-%d %H:%M:%S'),
+          tick: d3.utcFormat('%Y')
+        }
+      };
+    }
+
+    // Try to get time interval from dataset metadata
+    const firstItem = parsed[0].raw;
+    let detectedInterval = firstItem?.properties?.dataset_type 
+      ? getTimeIntervalFromDataset(firstItem.properties)
+      : null;
+
+    // If not available from metadata, infer from date patterns
+    if (!detectedInterval && parsed.length > 1) {
+      detectedInterval = inferTimeInterval(parsed);
+    }
+
+    // Fallback to daily if can't determine
+    detectedInterval = detectedInterval || 'daily';
+
+    const formatters = createFormatters(detectedInterval);
+    
+    return {
+      timeInterval: detectedInterval,
+      formatters
+    };
+  }, [parsed]);
+
+  // Helper function to get time interval from dataset properties
+  function getTimeIntervalFromDataset(properties) {
+    // This would come from your dataset metadata
+    // You might need to pass this as a prop or derive it from your data
+    return null; // For now, let inference handle it
+  }
+
+  // Helper function to infer time interval from date patterns
+  function inferTimeInterval(parsedData) {
+    if (parsedData.length < 2) return 'daily';
+
+    const firstDate = parsedData[0].date;
+    const secondDate = parsedData[1].date;
+    const diffMs = Math.abs(secondDate - firstDate);
+    
+    const hourMs = 60 * 60 * 1000;
+    const dayMs = 24 * hourMs;
+    const weekMs = 7 * dayMs;
+    const monthMs = 30 * dayMs; // Approximate
+
+    if (diffMs <= hourMs * 2) {
+      return 'hourly';
+    } else if (diffMs <= dayMs * 2) {
+      return 'daily';
+    } else if (diffMs <= weekMs * 2) {
+      return 'weekly';
+    } else if (diffMs <= monthMs * 2) {
+      return 'monthly';
+    } else {
+      return 'yearly';
+    }
+  }
+
+  // Helper function to create formatters based on time interval
+  function createFormatters(interval) {
+    switch (interval.toLowerCase()) {
+      case 'hourly':
+        return {
+          main: d3.utcFormat('%Y-%m-%d %H:00'),
+          tooltip: d3.utcFormat('%Y-%m-%d %H:00 UTC'),
+          tick: d3.utcFormat('%H:00'),
+          tickLong: d3.utcFormat('%m/%d %H:00')
+        };
+      
+      case 'daily':
+        return {
+          main: d3.utcFormat('%Y-%m-%d'),
+          tooltip: d3.utcFormat('%Y-%m-%d'),
+          tick: d3.utcFormat('%m/%d'),
+          tickLong: d3.utcFormat('%Y-%m-%d')
+        };
+      
+      case 'weekly':
+        return {
+          main: d3.utcFormat('%Y-%m-%d'),
+          tooltip: d3.utcFormat('Week of %Y-%m-%d'),
+          tick: d3.utcFormat('%m/%d'),
+          tickLong: d3.utcFormat('%Y-%m-%d')
+        };
+      
+      case 'monthly':
+        return {
+          main: d3.utcFormat('%Y-%m'),
+          tooltip: d3.utcFormat('%B %Y'),
+          tick: d3.utcFormat('%b'),
+          tickLong: d3.utcFormat('%b %Y')
+        };
+      
+      case 'yearly':
+        return {
+          main: d3.utcFormat('%Y'),
+          tooltip: d3.utcFormat('%Y'),
+          tick: d3.utcFormat('%Y'),
+          tickLong: d3.utcFormat('%Y')
+        };
+      
+      default:
+        return {
+          main: d3.utcFormat('%Y-%m-%d'),
+          tooltip: d3.utcFormat('%Y-%m-%d %H:%M:%S'),
+          tick: d3.utcFormat('%Y'),
+          tickLong: d3.utcFormat('%Y-%m-%d')
+        };
+    }
+  }
 
   const baseX = useMemo(() => {
     if (!dates.length || !dims.w) return null;
@@ -71,27 +192,53 @@ export default function ItemAnimation({
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
     const g = svg.append('g').attr('transform', `translate(0, ${dims.h / 2})`);
+    
     const render = (t) => {
       transformRef.current = t;
       g.selectAll('*').remove();
       const x = t.rescaleX(baseX);
       const minDate = d3.min(dates);
       const maxDate = d3.max(dates);
-      const months = d3.utcMonths(minDate, maxDate);
-      const span = x(maxDate) - x(minDate);
-      const ppm = months.length > 1 ? span / months.length : span;
+      
+      // Determine appropriate ticks based on time interval and zoom level
       let ticks = [];
-      if (ppm > 55) ticks = d3.utcMonths(minDate, maxDate);
-      else if (ppm > 34) ticks = d3.utcMonths(minDate, maxDate, 2);
-      else if (ppm > 12) ticks = d3.utcMonths(minDate, maxDate, 6);
-      else if (ppm > 4) ticks = d3.utcYears(minDate, maxDate);
-      else if (ppm > 2) ticks = d3.utcYears(minDate, maxDate, 2);
-      else ticks = d3.utcYears(minDate, maxDate, 5);
+      const span = x(maxDate) - x(minDate);
+      
+      if (timeInterval === 'hourly') {
+        const hours = d3.utcHours(minDate, maxDate);
+        const pph = hours.length > 1 ? span / hours.length : span;
+        if (pph > 50) ticks = d3.utcHours(minDate, maxDate);
+        else if (pph > 25) ticks = d3.utcHours(minDate, maxDate, 2);
+        else if (pph > 12) ticks = d3.utcHours(minDate, maxDate, 6);
+        else ticks = d3.utcDays(minDate, maxDate);
+      } else if (timeInterval === 'daily') {
+        const days = d3.utcDays(minDate, maxDate);
+        const ppd = days.length > 1 ? span / days.length : span;
+        if (ppd > 40) ticks = d3.utcDays(minDate, maxDate);
+        else if (ppd > 20) ticks = d3.utcDays(minDate, maxDate, 7);
+        else ticks = d3.utcMonths(minDate, maxDate);
+      } else if (timeInterval === 'monthly') {
+        const months = d3.utcMonths(minDate, maxDate);
+        const ppm = months.length > 1 ? span / months.length : span;
+        if (ppm > 55) ticks = d3.utcMonths(minDate, maxDate);
+        else if (ppm > 34) ticks = d3.utcMonths(minDate, maxDate, 2);
+        else if (ppm > 12) ticks = d3.utcMonths(minDate, maxDate, 6);
+        else if (ppm > 4) ticks = d3.utcYears(minDate, maxDate);
+        else ticks = d3.utcYears(minDate, maxDate, 2);
+      } else {
+        // Yearly or fallback
+        const years = d3.utcYears(minDate, maxDate);
+        const ppy = years.length > 1 ? span / years.length : span;
+        if (ppy > 40) ticks = d3.utcYears(minDate, maxDate);
+        else if (ppy > 20) ticks = d3.utcYears(minDate, maxDate, 2);
+        else ticks = d3.utcYears(minDate, maxDate, 5);
+      }
+
       // Timeline baseline
       g.append("line")
         .attr("x1", 30)
         .attr("x2", dims.w - 30)
-        .attr("stroke", "#e5e7eb") // lighter gray
+        .attr("stroke", "#e5e7eb")
         .attr("stroke-width", 4);
 
       // Grid/tick lines
@@ -102,12 +249,12 @@ export default function ItemAnimation({
         .attr("class", "tick")
         .attr("x1", (d) => x(d))
         .attr("x2", (d) => x(d))
-        .attr("y1", -dims.h * 0.25) // a bit longer
+        .attr("y1", -dims.h * 0.25)
         .attr("y2", dims.h * 0.25)
-        .attr("stroke", "#d1d5db") // subtle gray
-        .attr("stroke-dasharray", "2,2"); // dashed for readability
+        .attr("stroke", "#d1d5db")
+        .attr("stroke-dasharray", "2,2");
 
-      // Tick labels
+      // Tick labels with interval-appropriate formatting
       g.selectAll("text.ticklabel")
         .data(ticks)
         .enter()
@@ -118,8 +265,11 @@ export default function ItemAnimation({
         .attr("text-anchor", "middle")
         .attr("font-size", 11)
         .attr("font-weight", 500)
-        .attr("fill", "#374151") // darker gray for contrast
-        .text((d) => (ppm > 12 ? d3.utcFormat("%b %Y")(d) : d3.utcFormat("%Y")(d)));
+        .attr("fill", "#374151")
+        .text((d) => {
+          const tickSpan = ticks.length > 1 ? span / ticks.length : span;
+          return tickSpan > 50 ? formatters.tickLong(d) : formatters.tick(d);
+        });
 
       // Circles (dots)
       const circles = g
@@ -130,7 +280,7 @@ export default function ItemAnimation({
         .attr("class", "dot")
         .attr("cx", (d) => x(d.date))
         .attr("cy", 0)
-        .attr("r", 4) // smaller by default
+        .attr("r", 4)
         .attr("fill", (d, i) =>
           i === activeIndex ? "#34495E" : "#9ca3af"
         )
@@ -154,12 +304,12 @@ export default function ItemAnimation({
         .attr("cy", 0)
         .style("pointer-events", "none");
 
-      // Tooltip via <title>
+      // Tooltip with interval-appropriate formatting
       circles
         .append("title")
-        .text((d) => d3.utcFormat("%Y-%m-%d %H:%M:%S")(d.date));
-
+        .text((d) => formatters.tooltip(d.date));
     };
+
     const zoom = d3
       .zoom()
       .scaleExtent([1, 40])
@@ -172,9 +322,11 @@ export default function ItemAnimation({
         [dims.w - 30, 0],
       ])
       .on('zoom', (e) => render(e.transform));
+    
     zoomRef.current = zoom;
     svg.call(zoom);
     render(d3.zoomIdentity);
+    
     const center = () => {
       const svgNode = svgRef.current;
       if (!svgNode) return;
@@ -191,7 +343,7 @@ export default function ItemAnimation({
         .call(zoomRef.current.transform, t);
     };
     center();
-  }, [dims, parsed, activeIndex, baseX, dates]);
+  }, [dims, parsed, activeIndex, baseX, dates, timeInterval, formatters]);
 
   useEffect(() => {
     if (!playing) {
@@ -230,8 +382,6 @@ export default function ItemAnimation({
       .call(zoomRef.current.transform, d3.zoomIdentity);
   };
 
-  const fmt = d3.utcFormat('%Y-%m-%d %H:%M');
-
   return (
     <Box sx={{ width: '100%', p: 1 }}>
       <Box
@@ -246,7 +396,13 @@ export default function ItemAnimation({
           width: "100%",  
         }}
       >
-        <Typography variant="subtitle2">{title}</Typography>
+        <Typography variant="subtitle2">
+          {title} {timeInterval !== 'unknown' && (
+            <span style={{ fontSize: '0.8em', color: '#666', fontWeight: 'normal' }}>
+              ({timeInterval})
+            </span>
+          )}
+        </Typography>
 
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center" }}>
           <Tooltip title="Reset">
@@ -285,53 +441,55 @@ export default function ItemAnimation({
         <svg ref={svgRef} width={dims.w} height={dims.h} />
       </div>
       {parsed.length > 0 && (
-      <Box
-        sx={{
-          display: 'flex',
-          mt: 1,
-          px: 1,
-          py: 0.5,
-          bgcolor: '#fff',
-          borderRadius: 1,
-          boxShadow: '0 1px 1px rgba(0,0,0,0.0)',
-          height: 45, // set a fixed height for the whole bar
-        }}
-      >
-        {/* Start */}
-        <Box sx={{ textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
-          <Typography variant='caption' color='text.secondary' sx={{ fontSize: 10 }}>Start</Typography>
-          <Typography variant='subtitle2' sx={{ fontSize: 11 }}>{fmt(parsed[0].date)}</Typography>
-        </Box>
-
-        {/* Active */}
         <Box
           sx={{
-            flex: 1,
-            mx: 1,
-            bgcolor: '#34495E',
-            color: 'white',
-            borderRadius: 1,
             display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            fontSize: 11,
+            mt: 1,
+            px: 1,
+            py: 0.5,
+            bgcolor: '#fff',
+            borderRadius: 1,
+            boxShadow: '0 1px 1px rgba(0,0,0,0.0)',
+            height: 45,
           }}
         >
-          <Typography variant='caption' sx={{ fontSize: 10, opacity: 0.8 }}>Active</Typography>
-          <Typography variant='subtitle2' sx={{ fontSize: 11, fontWeight: 500 }}>
-            {fmt(parsed[activeIndex].date)}
-          </Typography>
+          {/* Start */}
+          <Box sx={{ textAlign: 'left', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
+            <Typography variant='caption' color='text.secondary' sx={{ fontSize: 10 }}>Start</Typography>
+            <Typography variant='subtitle2' sx={{ fontSize: 11 }}>
+              {formatters.main(parsed[0].date)}
+            </Typography>
+          </Box>
+
+          {/* Active */}
+          <Box
+            sx={{
+              flex: 1,
+              mx: 1,
+              bgcolor: '#34495E',
+              color: 'white',
+              borderRadius: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              fontSize: 11,
+            }}
+          >
+            <Typography variant='caption' sx={{ fontSize: 10, opacity: 0.8 }}>Active</Typography>
+            <Typography variant='subtitle2' sx={{ fontSize: 11, fontWeight: 500 }}>
+              {formatters.main(parsed[activeIndex].date)}
+            </Typography>
+          </Box>
+
+          {/* End */}
+          <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
+            <Typography variant='caption' color='text.secondary' sx={{ fontSize: 10 }}>End</Typography>
+            <Typography variant='subtitle2' sx={{ fontSize: 11 }}>
+              {formatters.main(parsed[parsed.length - 1].date)}
+            </Typography>
+          </Box>
         </Box>
-
-        {/* End */}
-        <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', justifyContent: 'center', minWidth: 60 }}>
-          <Typography variant='caption' color='text.secondary' sx={{ fontSize: 10 }}>End</Typography>
-          <Typography variant='subtitle2' sx={{ fontSize: 11 }}>{fmt(parsed[parsed.length - 1].date)}</Typography>
-        </Box>
-      </Box>
-
-
       )}
     </Box>
   );

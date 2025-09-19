@@ -4,13 +4,69 @@ import bbox from '@turf/bbox';
 import { useMapbox } from '../../context/mapContext';
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 
+// Simple custom styles with stronger colors
+const drawStyles = [
+  // Active polygon fill (while drawing)
+  {
+    id: 'gl-draw-polygon-fill-active',
+    type: 'fill',
+    filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'true']],
+    paint: {
+      'fill-color': '#ff0000',
+      'fill-opacity': 0.2
+    }
+  },
+  // Active polygon stroke (while drawing)
+  {
+    id: 'gl-draw-polygon-stroke-active',
+    type: 'line',
+    filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'true']],
+    paint: {
+      'line-color': '#ff0000',
+      'line-width': 3
+    }
+  },
+  // Inactive polygon fill
+  {
+    id: 'gl-draw-polygon-fill-inactive',
+    type: 'fill',
+    filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'false']],
+    paint: {
+      'fill-color': '#3388ff',
+      'fill-opacity': 0.2
+    }
+  },
+  // Inactive polygon stroke
+  {
+    id: 'gl-draw-polygon-stroke-inactive',
+    type: 'line',
+    filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'false']],
+    paint: {
+      'line-color': '#3388ff',
+      'line-width': 2
+    }
+  },
+  // Vertex points
+  {
+    id: 'gl-draw-polygon-and-line-vertex-stroke-inactive',
+    type: 'circle',
+    filter: ['all', ['==', '$type', 'Point'], ['==', 'meta', 'vertex']],
+    paint: {
+      'circle-radius': 4,
+      'circle-color': '#ffffff',
+      'circle-stroke-color': '#ff0000',
+      'circle-stroke-width': 2
+    }
+  }
+];
+
 export function AOILayer({ aoi, isDrawing, onDrawComplete, onDrawCancel, deckRef }) {
   const mapContext = useMapbox();
   const map = mapContext?.map;
   const drawRef = useRef(null);
   const isDrawingRef = useRef(false);
 
-  // Initialize Mapbox GL Draw (for drawing only)
+  // Initialize Mapbox GL Draw
   useEffect(() => {
     if (!map) return;
 
@@ -18,6 +74,7 @@ export function AOILayer({ aoi, isDrawing, onDrawComplete, onDrawCancel, deckRef
       displayControlsDefault: false,
       controls: { polygon: true, trash: true },
       defaultMode: 'simple_select',
+      styles: drawStyles
     });
 
     map.addControl(draw, 'top-right');

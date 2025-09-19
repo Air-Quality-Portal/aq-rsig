@@ -378,7 +378,7 @@ export function DeckGlLayerManager({
           updateTriggers: {
             getTileData: [itemId, datetime, layerRefreshCounter],
           },
-          refinementStrategy: 'never',
+          refinementStrategy: 'best-available',
 
           renderSubLayers: (props) => {
             const {
@@ -421,10 +421,11 @@ export function DeckGlLayerManager({
       }
 
       case 'netcdf-2d': {
+        console.log("Layer Data:", layerData);
         const { conceptId, datetime, variable, ...rest } = layerData;
         if (!conceptId || !datetime || !variable) break;
 
-        const varValues = { lev: [500, 1000] };
+        const varValues = { lev: [250, 550, 850, 1000] };
         const netcdfParams = {
           ...rest,
           colormap: datasetMetadata.colormap || 'reds',
@@ -447,7 +448,7 @@ export function DeckGlLayerManager({
           (l) => l.id === datasetId
         );
         const baseZOffset = datasetIndex * 10;
-        const DEFAULT_BOUNDS = [-125.0, 24.5, -66.5, 49.5];
+        const DEFAULT_BOUNDS = [-125.0, 1.5, -66.5, 65.5];
         const effectiveBounds = spatialSubset || {
           west: DEFAULT_BOUNDS[0],
           south: DEFAULT_BOUNDS[1],
@@ -458,7 +459,7 @@ export function DeckGlLayerManager({
           const lev = levValues[index];
           if (lev === undefined) return;
           const maxPressure = Math.max(...levValues);
-          const relativeZOffset = baseZOffset + (maxPressure - lev) * 500;
+          const relativeZOffset = baseZOffset + (maxPressure - lev) * 1000;
           const isLayerVisible =
             layerOpacityList.find((d) => d.id === datasetId)?.levelVisibility?.[
               lev
@@ -473,6 +474,7 @@ export function DeckGlLayerManager({
             visible: isLayerVisible && visible,
             pickable: true,
             opacity: dynamicOpacity,
+            refinementStrategy: 'best-available',
             renderSubLayers: (props) => {
               const {
                 bbox: { west, south, east, north },

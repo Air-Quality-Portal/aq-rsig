@@ -14,23 +14,25 @@ export const galleryData = {
       time_interval: 'Daily',
       start_date: '2014-06-01T00:00:00Z',
       end_date: '2014-09-30T00:00:00Z',
-      stops: ['#440154', '#3b528b', '#21908d', '#5dc962', '#fde725']
+      stops: ['#440154', '#3b528b', '#21908d', '#5dc962', '#fde725'],
+      is_animatable: true,
     },
     {
-      id: 'TROPESS_reanalysis_mon_emi_nox_anth',
-      name: 'TROPESS Surface NOx Emissions',
+      id: 'TROPESS_reanalysis_mon_emi_O3_anth',
+      name: 'TROPESS Surface O3 Emissions',
       type: 'netcdf-2d',
       thumbnailUrl: '/path/to/thumbnail3.jpg',
       description:
-        "The TROPESS Chemical Reanalysis Surface Total NOx emissions Monthly 2-dimensional Product contains nitrogen oxides (NO and NO2) emissions from the total of all sources. The data are part of the Tropospheric Chemical Reanalysis v2 (TCR-2) for the period 2005-2021. TCR-2 uses JPL's Multi-mOdel Multi-cOnstituent Chemical (MOMO-Chem) data assimilation framework that simultaneously optimizes both concentrations and emissions of multiple species from multiple satellite sensors. The data files are written in the netCDF version 4 file format, and each file contains a year of data at monthly resolution, and a spatial resolution of 1.125 x 1.125 degrees. The principal investigator for the TCR-2 data is Miyazaki, Kazuyuki.",
+        "The TROPESS Chemical Reanalysis Surface Total NOx emissions Monthly 2-dimensional Product contains Ozone (O3) concentration from the total of all sources. The data are part of the Tropospheric Chemical Reanalysis v2 (TCR-2) for the period 2005-2021. TCR-2 uses JPL's Multi-mOdel Multi-cOnstituent Chemical (MOMO-Chem) data assimilation framework that simultaneously optimizes both concentrations and emissions of multiple species from multiple satellite sensors. The data files are written in the netCDF version 4 file format, and each file contains a year of data at monthly resolution, and a spatial resolution of 1.125 x 1.125 degrees. The principal investigator for the TCR-2 data is Miyazaki, Kazuyuki.",
       units: 'kg m-2 s-1',
       rescale_values: [0, 4.786979e-10],
       colormap: 'reds',
       info: 'https://data.nasa.gov/dataset/tropess-chemical-reanalysis-surface-total-nox-emissions-monthly-2-dimensional-product-v1-t-2206f',
-      time_interval: 'monthly',
+      time_interval: 'Monthly',
       start_date: '2005-01-01T00:00:00+00:00',
       end_date: '2021-12-31T00:00:00+00:00',
-      stops: ['#fff5f0', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15']
+      stops: ['#fff5f0', '#fcbba1', '#fc9272', '#fb6a4a', '#de2d26', '#a50f15'],
+      is_animatable: true,
     },
     {
       id: 'JPL-o3-hourly-v1',
@@ -46,7 +48,8 @@ export const galleryData = {
       time_interval: 'hourly',
       start_date: '2020-07-19 14:00:00+00',
       end_date: '2020-07-31 23:59:59+00',
-      stops: ['#67001f', '#d6604d', '#f7f7f7', '#4393c3', '#053061']
+      stops: ['#67001f', '#d6604d', '#f7f7f7', '#4393c3', '#053061'],
+      is_animatable: true,
     },
   ],
   insitu: [
@@ -61,6 +64,7 @@ export const galleryData = {
       time_interval: 'yearly',
       start_date: '2017-01-01T00:00:00+00:00',
       end_date: '2022-12-31T00:00:00+00:00',
+      is_animatable: false,
     },
   ],
   Lidar: [
@@ -78,6 +82,7 @@ export const galleryData = {
       start_date: '2023-06-30T21:39:53',
       end_date: '2023-06-30T21:39:53',
       available_dates: ['2020-07-20T07:15:43Z', '2023-06-31T21:39:53Z'],
+      is_animatable: false,
     },
   ],
 };
