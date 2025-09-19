@@ -19,8 +19,9 @@ export const LineChart = ({ datasets = [] }) => {
     }
 
     // Smart axis detection: check if all datasets have the same units
-    const allSameUnits = datasets.length > 0 && 
-      datasets.every(ds => ds.units === datasets[0].units);
+    const allSameUnits =
+      datasets.length > 0 &&
+      datasets.every((ds) => ds.units === datasets[0].units);
 
     // For backward compatibility: limit to 2 datasets for dual-axis mode
     // For same units: allow all datasets on single axis
@@ -32,16 +33,16 @@ export const LineChart = ({ datasets = [] }) => {
       borderColor: lineColors[index % lineColors.length],
       backgroundColor: `${lineColors[index % lineColors.length]}20`,
       // Smart axis assignment
-      yAxisID: allSameUnits ? 'yLeft' : (index === 0 ? 'yLeft' : 'yRight'),
+      yAxisID: allSameUnits ? 'yLeft' : index === 0 ? 'yLeft' : 'yRight',
     }));
-    
+
     const chartJsScales = {
       x: {
         display: true,
         title: {
           display: true,
-          text: 'Date'
-        }
+          text: 'Date',
+        },
       },
       yLeft: {
         type: 'linear',
@@ -50,8 +51,8 @@ export const LineChart = ({ datasets = [] }) => {
         title: {
           display: true,
           text: datasets[0]?.units || 'Primary Axis',
-        }
-      }
+        },
+      },
     };
 
     // Only create right axis for different units (station data)
@@ -69,15 +70,14 @@ export const LineChart = ({ datasets = [] }) => {
         },
       };
     }
-    
+
     chart.data.labels = datasets[0].labels;
     chart.data.datasets = chartJsDatasets;
     chart.options.scales = chartJsScales;
     chart.options.interaction.mode = 'index';
     chart.options.interaction.intersect = false;
-    
-    chart.update();
 
+    chart.update();
   }, [chart, datasets]);
 
   return null;

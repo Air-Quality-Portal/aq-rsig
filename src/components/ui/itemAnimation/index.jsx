@@ -17,7 +17,7 @@ export default function ItemAnimation({
   onFrameChange,
   title = 'Timeline',
   initialAutoPlay = false,
-  speedMs = 800,
+  speedMs = 2000,
 }) {
   const svgRef = useRef(null);
   const zoomRef = useRef(null);

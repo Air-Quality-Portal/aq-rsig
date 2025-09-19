@@ -1,12 +1,6 @@
 // components/aoi/AnalysisResults.jsx - Updated to use existing LineChart
 import React, { useMemo } from 'react';
-import {
-  Box,
-  Paper,
-  Typography,
-  IconButton,
-  Tooltip,
-} from '@mui/material';
+import { Box, Paper, Typography, IconButton, Tooltip } from '@mui/material';
 import {
   Close as CloseIcon,
   Download as DownloadIcon,
@@ -26,20 +20,26 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
     // Check if we have statistics data with temporal breakdown
     if (results.statistics && results.statistics.length > 0) {
       const layerStats = results.statistics[0]; // Get first (and likely only) layer
-      
+
       if (layerStats.statistics && layerStats.statistics.length > 0) {
         // Extract temporal statistics and convert to your LineChart format
-        const timePoints = layerStats.statistics.map((timePointStats, index) => ({
-          datetime: results.chartData[index]?.datetime || timePointStats.datetime || `Time ${index}`,
-          min: timePointStats.min,
-          max: timePointStats.max,
-          mean: timePointStats.mean
-        })).filter(point => 
-          point.min !== null && point.max !== null && point.mean !== null
-        );
+        const timePoints = layerStats.statistics
+          .map((timePointStats, index) => ({
+            datetime:
+              results.chartData[index]?.datetime ||
+              timePointStats.datetime ||
+              `Time ${index}`,
+            min: timePointStats.min,
+            max: timePointStats.max,
+            mean: timePointStats.mean,
+          }))
+          .filter(
+            (point) =>
+              point.min !== null && point.max !== null && point.mean !== null
+          );
 
         // Create labels array (shared across all datasets)
-        const labels = timePoints.map(point => {
+        const labels = timePoints.map((point) => {
           const date = new Date(point.datetime);
           return date.toLocaleDateString('en-US', {
             year: 'numeric',
@@ -54,32 +54,34 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
         return [
           {
             parameterName: 'Minimum',
-            data: timePoints.map(point => point.min),
+            data: timePoints.map((point) => point.min),
             labels: labels,
-            units: units
+            units: units,
           },
           {
-            parameterName: 'Maximum', 
-            data: timePoints.map(point => point.max),
+            parameterName: 'Maximum',
+            data: timePoints.map((point) => point.max),
             labels: labels,
-            units: units // Exact same units
+            units: units, // Exact same units
           },
           {
             parameterName: 'Mean',
-            data: timePoints.map(point => point.mean),
+            data: timePoints.map((point) => point.mean),
             labels: labels,
-            units: units // Exact same units
-          }
+            units: units, // Exact same units
+          },
         ];
       }
     }
 
     // Fallback: Use chartData if available
     if (results.chartData && results.chartData.length > 0) {
-      const layerKeys = Object.keys(results.chartData[0]).filter(key => key !== 'datetime');
-      
+      const layerKeys = Object.keys(results.chartData[0]).filter(
+        (key) => key !== 'datetime'
+      );
+
       // Create labels from datetime
-      const labels = results.chartData.map(point => {
+      const labels = results.chartData.map((point) => {
         const date = new Date(point.datetime);
         return date.toLocaleDateString('en-US', {
           year: 'numeric',
@@ -87,13 +89,13 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
           day: 'numeric',
         });
       });
-      
+
       // Return all available layer keys as separate datasets
       return layerKeys.map((layerKey) => ({
         parameterName: `Layer ${layerKey}`,
-        data: results.chartData.map(point => point[layerKey]),
+        data: results.chartData.map((point) => point[layerKey]),
         labels: labels,
-        units: 'Value' // Same units for all
+        units: 'Value', // Same units for all
       }));
     }
 
@@ -124,7 +126,7 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
           bottom: 0,
           left: 0,
           right: 0,
-          height: '45vh', // Match dashboard height
+          height: '45vh',
           zIndex: 1000,
         }
       : {
@@ -156,38 +158,42 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            padding: '16px 8px',
             borderBottom: '1px solid #eee',
           }}
         >
           <Box>
-            <Typography 
+            <Typography
               variant='h6'
-              sx={{ 
-                margin: 0, 
-                fontSize: '20px', 
-                fontWeight: '600' 
+              sx={{
+                margin: 0,
+                fontSize: '16px',
+                fontWeight: '600',
               }}
             >
               Area Analysis Results
             </Typography>
             <Typography variant='body2' color='text.secondary'>
-              Statistical trends over time • {chartDatasets.reduce((acc, dataset) => acc + dataset.data.length, 0)} data points
+              Statistical trends over time •{' '}
+              {chartDatasets.reduce(
+                (acc, dataset) => acc + dataset.data.length,
+                0
+              )}{' '}
+              data points
             </Typography>
           </Box>
 
           <Box sx={{ display: 'flex', gap: 1, zIndex: '10000' }}>
             <Tooltip title='Download Data'>
-              <IconButton 
-                size='small' 
+              <IconButton
+                size='small'
                 onClick={handleDownload}
                 sx={{ bgcolor: 'white', '&:hover': { bgcolor: 'grey.100' } }}
               >
                 <DownloadIcon fontSize='small' />
               </IconButton>
             </Tooltip>
-            <IconButton 
-              size='small' 
+            <IconButton
+              size='small'
               onClick={onClose}
               sx={{ bgcolor: 'white', '&:hover': { bgcolor: 'grey.100' } }}
             >
@@ -197,20 +203,20 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
         </Box>
 
         {/* Chart Container - matches dashboard structure */}
-        <Box sx={{ flex: 1, padding: '16px' }}>
+        <Box sx={{ flex: 1, padding: '0px' }}>
           {chartDatasets && chartDatasets.length > 0 ? (
             <ChartProvider>
               <LineChart datasets={chartDatasets} />
             </ChartProvider>
           ) : (
-            <Box 
-              sx={{ 
-                height: '100%', 
-                display: 'flex', 
-                alignItems: 'center', 
+            <Box
+              sx={{
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: 'center',
                 flexDirection: 'column',
-                color: 'text.secondary'
+                color: 'text.secondary',
               }}
             >
               <Typography variant='h6' gutterBottom>

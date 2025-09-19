@@ -33,10 +33,11 @@ export function DatasetGallery({
   }, []);
 
   const handleDatasetClick = async (dataset) => {
+    console.log('Selected dataset:', dataset);
     if (dataset.type === 'netcdf-2d') {
       const directData = {
         conceptId: dataset.conceptId || 'C2837626477-GES_DISC',
-        datetime: dataset.datetime || '2018-02-12T09:00:00Z',
+        datetime: dataset.start_date || '2018-02-12T09:00:00Z',
         variable: dataset.variable || 'o3',
         colormap: dataset.colormap || 'reds',
         rescale: dataset.rescale || '0, 4.786979e-10',

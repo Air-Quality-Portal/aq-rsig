@@ -179,7 +179,7 @@ const DatasetCard = ({
         .filter((level) => level !== null)
         .sort((a, b) => b - a);
     } else {
-      pressureLevels = [1000, 500]; // Default levels if no layers are present
+      pressureLevels = [250, 550, 850, 1000]; // Default levels if no layers are present
     }
   }
 
