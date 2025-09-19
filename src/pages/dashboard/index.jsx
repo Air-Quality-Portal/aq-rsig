@@ -30,52 +30,6 @@ import { AnalysisResults } from '../../components/aoi/AnalysisResults';
 const TITLE = 'RSIG Dashboard';
 const DESCRIPTION = '';
 
-function TwoDateSwitch({ dates = [], value, onChange }) {
-  const two = Array.from(new Set(dates))
-    .sort((a, b) => new Date(a) - new Date(b))
-    .slice(0, 2);
-
-  if (two.length < 2) return null;
-
-  const format = (d) =>
-    new Date(d).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZoneName: 'short',
-    });
-
-  return (
-    <div
-      style={{
-        position: 'absolute',
-        right: 10,
-        bottom: 10,
-        zIndex: 1302,
-        background: 'white',
-        borderRadius: 8,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-        padding: 10,
-      }}
-    >
-      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
-        Select date
-      </div>
-      <ToggleButtonGroup
-        exclusive
-        size='small'
-        value={value}
-        onChange={(_, v) => v && onChange(v)}
-      >
-        <ToggleButton value={two[0]}>{format(two[0])}</ToggleButton>
-        <ToggleButton value={two[1]}>{format(two[1])}</ToggleButton>
-      </ToggleButtonGroup>
-    </div>
-  );
-}
-
 export function DashboardContent({ loadingData }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [openDrawer, setOpenDrawer] = useState(true);
