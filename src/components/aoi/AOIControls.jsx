@@ -209,12 +209,12 @@ export function AOIControls({
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-            <AnalyticsIcon color="action" fontSize="small" />
-            <Typography variant="subtitle2" color="text.secondary">
+            <AnalyticsIcon color='action' fontSize='small' />
+            <Typography variant='subtitle2' color='text.secondary'>
               Area Analysis
             </Typography>
           </Box>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant='body2' color='text.secondary'>
             Add layers to enable analysis
           </Typography>
         </Paper>
@@ -249,86 +249,105 @@ export function AOIControls({
             borderColor: 'divider',
           }}
         >
-          <AnalyticsIcon fontSize="small" color="primary" />
-          <Typography variant="subtitle2" fontWeight="600">
+          <AnalyticsIcon fontSize='small' color='primary' />
+          <Typography variant='subtitle2' fontWeight='600'>
             Area Analysis
           </Typography>
-          {state.selectedAOI && state.selectedTemporalGroup && state.selectedTimeWindow && (
-            <CheckIcon fontSize="small" color="success" />
-          )}
+          {state.selectedAOI &&
+            state.selectedTemporalGroup &&
+            state.selectedTimeWindow && (
+              <CheckIcon fontSize='small' color='success' />
+            )}
         </Box>
 
         <Box sx={{ p: 1.5, pt: 1 }}>
           {/* Area Selection */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" fontWeight="500" gutterBottom sx={{ color: 'text.primary' }}>
+            <Typography
+              variant='body2'
+              fontWeight='500'
+              gutterBottom
+              sx={{ color: 'text.primary' }}
+            >
               Analysis Area
             </Typography>
-            
+
             <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
               {!state.isDrawing ? (
                 <Button
-                  variant="outlined"
-                  size="small"
+                  variant='outlined'
+                  size='small'
                   onClick={handleStartDrawing}
                   disabled={state.analysisState.status === 'analyzing'}
-                  sx={{ 
+                  sx={{
                     minWidth: 'auto',
                     px: 1,
                     py: 0.5,
                   }}
                 >
-                  <DrawIcon fontSize="small" />
+                  <DrawIcon fontSize='small' />
                 </Button>
               ) : (
                 <Button
-                  variant="outlined"
-                  size="small"
+                  variant='outlined'
+                  size='small'
                   onClick={handleStopDrawing}
-                  color="warning"
-                  sx={{ 
+                  color='warning'
+                  sx={{
                     minWidth: 'auto',
                     px: 1,
                     py: 0.5,
                   }}
                 >
-                  <StopIcon fontSize="small" />
+                  <StopIcon fontSize='small' />
                 </Button>
               )}
 
               {/* Compact presets dropdown */}
               {state.predefinedAOIs.length > 0 && (
-                <FormControl 
-                  size="small" 
-                  sx={{ 
+                <FormControl
+                  size='small'
+                  sx={{
                     flex: 1,
-                    minWidth: 120
+                    minWidth: 120,
                   }}
                 >
                   <Select
-                    value=""
+                    value=''
                     onChange={(e) => handlePredefinedAOISelect(e.target.value)}
                     displayEmpty
-                    disabled={state.isDrawing || state.analysisState.status === 'analyzing'}
-                    sx={{ 
+                    disabled={
+                      state.isDrawing ||
+                      state.analysisState.status === 'analyzing'
+                    }
+                    sx={{
                       fontSize: '0.75rem',
                       '& .MuiSelect-select': {
                         py: 0.5,
                         px: 1,
-                      }
+                      },
                     }}
                   >
-                    <MenuItem value="" disabled>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <LocationIcon fontSize="small" color="action" />
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
+                    <MenuItem value='' disabled>
+                      <Box
+                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                      >
+                        <LocationIcon fontSize='small' color='action' />
+                        <Typography
+                          variant='body2'
+                          color='text.secondary'
+                          sx={{ fontSize: '0.75rem' }}
+                        >
                           Choose preset area
                         </Typography>
                       </Box>
                     </MenuItem>
                     {state.predefinedAOIs.map((aoi) => (
                       <MenuItem key={aoi.id} value={aoi.id}>
-                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                        <Typography
+                          variant='body2'
+                          sx={{ fontSize: '0.75rem' }}
+                        >
                           {aoi.name}
                         </Typography>
                       </MenuItem>
@@ -339,33 +358,36 @@ export function AOIControls({
 
               {state.selectedAOI && (
                 <Button
-                  variant="text"
-                  size="small"
+                  variant='text'
+                  size='small'
                   onClick={handleClearAOI}
-                  color="error"
-                  sx={{ 
+                  color='error'
+                  sx={{
                     minWidth: 'auto',
                     px: 1,
                     py: 0.5,
                   }}
                 >
-                  <ClearIcon fontSize="small" />
+                  <ClearIcon fontSize='small' />
                 </Button>
               )}
             </Box>
 
             {state.isDrawing && (
-              <Alert severity="info" sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}>
+              <Alert
+                severity='info'
+                sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}
+              >
                 Click points to draw polygon, click first point to close
               </Alert>
             )}
 
             {state.selectedAOI && (
               <Chip
-                label="Area Selected"
-                size="small"
-                color="success"
-                variant="outlined"
+                label='Area Selected'
+                size='small'
+                color='success'
+                variant='outlined'
                 sx={{ fontSize: '0.7rem', height: 20 }}
               />
             )}
@@ -374,29 +396,43 @@ export function AOIControls({
           {/* Data Selection */}
           {state.temporalGroups.length > 0 && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" fontWeight="500" gutterBottom sx={{ color: 'text.primary' }}>
+              <Typography
+                variant='body2'
+                fontWeight='500'
+                gutterBottom
+                sx={{ color: 'text.primary' }}
+              >
                 Data & Time Window
               </Typography>
-              
+
               <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                <FormControl size="small" sx={{ minWidth: 120, flex: 1 }}>
+                <FormControl size='small' sx={{ minWidth: 120, flex: 1 }}>
                   <Select
                     value={state.selectedTemporalGroup || ''}
                     onChange={handleTemporalGroupSelect}
                     displayEmpty
-                    disabled={state.analysisState.status === 'analyzing' || state.isDrawing}
+                    disabled={
+                      state.analysisState.status === 'analyzing' ||
+                      state.isDrawing
+                    }
                     sx={{ fontSize: '0.8rem' }}
                   >
-                    <MenuItem value="" disabled>
-                      <Typography variant="body2" color="text.secondary">
+                    <MenuItem value='' disabled>
+                      <Typography variant='body2' color='text.secondary'>
                         Resolution
                       </Typography>
                     </MenuItem>
                     {state.temporalGroups.map((group) => (
                       <MenuItem key={group.id} value={group.id}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <TimelineIcon fontSize="small" />
-                          <Typography variant="body2">
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                          }}
+                        >
+                          <TimelineIcon fontSize='small' />
+                          <Typography variant='body2'>
                             {getTemporalDisplayName(group.resolution)}
                           </Typography>
                         </Box>
@@ -406,22 +442,25 @@ export function AOIControls({
                 </FormControl>
 
                 {timeWindowOptions.length > 0 && (
-                  <FormControl size="small" sx={{ minWidth: 80 }}>
+                  <FormControl size='small' sx={{ minWidth: 80 }}>
                     <Select
                       value={state.selectedTimeWindow || ''}
                       onChange={handleTimeWindowSelect}
                       displayEmpty
-                      disabled={state.analysisState.status === 'analyzing' || state.isDrawing}
+                      disabled={
+                        state.analysisState.status === 'analyzing' ||
+                        state.isDrawing
+                      }
                       sx={{ fontSize: '0.8rem' }}
                     >
-                      <MenuItem value="" disabled>
-                        <Typography variant="body2" color="text.secondary">
+                      <MenuItem value='' disabled>
+                        <Typography variant='body2' color='text.secondary'>
                           Window
                         </Typography>
                       </MenuItem>
                       {timeWindowOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
-                          <Typography variant="body2">
+                          <Typography variant='body2'>
                             {option.label}
                           </Typography>
                         </MenuItem>
@@ -432,13 +471,19 @@ export function AOIControls({
               </Box>
 
               {state.selectedTemporalGroup && (
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
+                <Typography
+                  variant='caption'
+                  color='text.secondary'
+                  sx={{ fontSize: '0.7rem' }}
+                >
                   {state.temporalGroups
                     .find((g) => g.id === state.selectedTemporalGroup)
                     ?.layers.map((l) => l.name)
                     .slice(0, 2)
                     .join(', ')}
-                  {state.temporalGroups.find((g) => g.id === state.selectedTemporalGroup)?.layers.length > 2 && '...'}
+                  {state.temporalGroups.find(
+                    (g) => g.id === state.selectedTemporalGroup
+                  )?.layers.length > 2 && '...'}
                 </Typography>
               )}
 
@@ -453,11 +498,19 @@ export function AOIControls({
                     borderColor: 'primary.200',
                   }}
                 >
-                  <Typography variant="caption" color="primary.600" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
+                  <Typography
+                    variant='caption'
+                    color='primary.600'
+                    sx={{ fontSize: '0.7rem', fontWeight: 500 }}
+                  >
                     From {formatActiveDate(activeDate)}
                   </Typography>
                   {activeLayer && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
+                    <Typography
+                      variant='caption'
+                      color='text.secondary'
+                      sx={{ display: 'block', fontSize: '0.65rem' }}
+                    >
                       {activeLayer.name}
                     </Typography>
                   )}
@@ -479,7 +532,7 @@ export function AOIControls({
                 }
                 sx={{ py: 0.5, fontSize: '0.75rem' }}
               >
-                <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                <Typography variant='body2' sx={{ fontSize: '0.75rem' }}>
                   {state.analysisState.message}
                 </Typography>
               </Alert>
@@ -487,15 +540,15 @@ export function AOIControls({
               {state.analysisState.status === 'analyzing' && (
                 <Box sx={{ mt: 1 }}>
                   <LinearProgress
-                    variant="determinate"
+                    variant='determinate'
                     value={state.analysisState.progress || 0}
                     sx={{ height: 3, borderRadius: 1 }}
                   />
                   <Typography
-                    variant="caption"
-                    sx={{ 
-                      display: 'block', 
-                      textAlign: 'center', 
+                    variant='caption'
+                    sx={{
+                      display: 'block',
+                      textAlign: 'center',
                       mt: 0.25,
                       fontSize: '0.65rem',
                       color: 'text.secondary',
@@ -510,12 +563,14 @@ export function AOIControls({
 
           {/* Run Analysis Button */}
           <Button
-            variant="contained"
+            variant='contained'
             fullWidth
             startIcon={<AnalyticsIcon />}
             onClick={handleRunAnalysis}
-            disabled={!canRunAnalysis || state.analysisState.status === 'analyzing'}
-            sx={{ 
+            disabled={
+              !canRunAnalysis || state.analysisState.status === 'analyzing'
+            }
+            sx={{
               py: 1,
               fontSize: '0.8rem',
               fontWeight: 600,

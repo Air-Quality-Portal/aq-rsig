@@ -625,9 +625,9 @@ export function DashboardContent({ loadingData }) {
           >
             <Stack sx={{ p: 1.5, overflowY: 'auto' }} spacing={1.5}>
               {/* Dashboard Title Section */}
-              <CollapsibleSection title='Dashboard' defaultExpanded={true}>
-                {/* <Title title={TITLE} description={DESCRIPTION} /> */}
-              </CollapsibleSection>
+              <Typography title='Dashboard' defaultExpanded={true}>
+                <Title title={TITLE} description={DESCRIPTION} />
+              </Typography>
 
               {/* AOI Controls Section */}
               <CollapsibleSection
