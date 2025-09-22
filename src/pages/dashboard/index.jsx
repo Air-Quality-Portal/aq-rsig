@@ -1,9 +1,13 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import Collapse from '@mui/material/Collapse';
+import Typography from '@mui/material/Typography';
 import { ToggleButtonGroup, ToggleButton } from '@mui/material';
 import Stack from '@mui/material/Stack';
 import {
@@ -36,6 +40,41 @@ import {
 
 const TITLE = 'RSIG Dashboard';
 const DESCRIPTION = '';
+
+// Collapsible Section Component
+const CollapsibleSection = ({ title, children, defaultExpanded = true, sx = {} }) => {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  return (
+    <Box sx={{ ...sx }}>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          py: 1,
+          '&:hover': { backgroundColor: 'action.hover' },
+          borderRadius: 1,
+          px: 1,
+        }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          {title}
+        </Typography>
+        <IconButton size="small" sx={{ p: 0.5 }}>
+          {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        </IconButton>
+      </Box>
+      <Collapse in={expanded}>
+        <Box sx={{ pt: 1 }}>
+          {children}
+        </Box>
+      </Collapse>
+    </Box>
+  );
+};
 
 export function DashboardContent({ loadingData }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -82,8 +121,15 @@ export function DashboardContent({ loadingData }) {
 
   const [currentRasterFeature, setCurrentRasterFeature] = useState(null);
   const allDatasetLayerData = useRef(new Map());
+  const allActiveLayers = useRef([]);
+  const allActiveDatasets = useRef([]);
 
-  const onLayerSelect = (url) => {
+  // Memoize the updateActiveLayers callback to prevent infinite re-renders
+  const updateActiveLayers = useCallback((layers) => {
+    allActiveLayers.current = layers;
+  }, []);
+
+  const onLayerSelect = useCallback((url) => {
     setActiveLayerUrl(url);
     const myCustomEvent = new CustomEvent('layerSelected', {
       detail: { url: url },
@@ -91,10 +137,9 @@ export function DashboardContent({ loadingData }) {
       cancelable: true,
     });
     window.dispatchEvent(myCustomEvent);
-  };
+  }, []);
 
-  const allActiveDatasets = useRef([]);
-  const updateActiveDataset = (dataset) => {
+  const updateActiveDataset = useCallback((dataset) => {
     if (!dataset) return;
 
     const existingIndex = allActiveDatasets.current.findIndex(
@@ -132,7 +177,7 @@ export function DashboardContent({ loadingData }) {
       }
       return [...currentList, newItem];
     });
-  };
+  }, []);
 
   const handleFrameChange = useCallback(
     (feature) => {
@@ -155,12 +200,7 @@ export function DashboardContent({ loadingData }) {
     [selectedRecord?.type]
   );
 
-  const allActiveLayers = useRef([]);
-  const updateActiveLayers = (layers) => {
-    allActiveLayers.current = layers;
-  };
-
-  const onRecordSelect = (dataWithMetadata) => {
+  const onRecordSelect = useCallback((dataWithMetadata) => {
     let datasetInfo, actualData;
     if (dataWithMetadata.datasetInfo && dataWithMetadata.galleryType) {
       datasetInfo = dataWithMetadata.datasetInfo;
@@ -217,22 +257,22 @@ export function DashboardContent({ loadingData }) {
     }
 
     setOpenDrawer(false);
-  };
+  }, []);
 
-  const handleStationClick = (stationFeature) => {
+  const handleStationClick = useCallback((stationFeature) => {
     showStationChart(stationFeature);
     setActiveBottomComponent('station-chart');
-  };
+  }, [showStationChart]);
 
-  const handleOpacityChange = (datasetId, newOpacity) => {
+  const handleOpacityChange = useCallback((datasetId, newOpacity) => {
     setLayerDisplayList((currentList) =>
       currentList.map((item) =>
         item.id === datasetId ? { ...item, opacity: newOpacity } : item
       )
     );
-  };
+  }, []);
 
-  const handleLevelVisibilityChange = (datasetId, level) => {
+  const handleLevelVisibilityChange = useCallback((datasetId, level) => {
     setLayerDisplayList((currentList) =>
       currentList.map((item) => {
         if (item.id === datasetId && item.levelVisibility) {
@@ -247,9 +287,9 @@ export function DashboardContent({ loadingData }) {
         return item;
       })
     );
-  };
+  }, []);
 
-  const handleLayerReorder = (reorderedLayers) => {
+  const handleLayerReorder = useCallback((reorderedLayers) => {
     setLayerDisplayList(reorderedLayers);
     allActiveDatasets.current = reorderedLayers;
 
@@ -260,7 +300,7 @@ export function DashboardContent({ loadingData }) {
         shouldShowAnimation(d, allDatasetLayerData.current.get(d.id))
       );
 
-    if (newTopAnimatable && newTopAnimatable.id !== selectedDatasetId) {
+    if (newTopAnimatable) {
       setSelectedDatasetId(newTopAnimatable.id);
       const storedLayerData = allDatasetLayerData.current.get(
         newTopAnimatable.id
@@ -270,9 +310,9 @@ export function DashboardContent({ loadingData }) {
         setLayerData(storedLayerData);
       }
     }
-  };
+  }, []);
 
-  const moveLayerToTop = (datasetId) => {
+  const moveLayerToTop = useCallback((datasetId) => {
     setLayerDisplayList((currentList) => {
       const layerIndex = currentList.findIndex(
         (layer) => layer.id === datasetId
@@ -283,9 +323,9 @@ export function DashboardContent({ loadingData }) {
       reorderedList.push(movedLayer);
       return reorderedList;
     });
-  };
+  }, []);
 
-  const handleLayerRemove = (datasetId) => {
+  const handleLayerRemove = useCallback((datasetId) => {
     const updatedList = layerDisplayList.filter(
       (item) => item.id !== datasetId
     );
@@ -321,11 +361,11 @@ export function DashboardContent({ loadingData }) {
         setAnimationFeatures([]);
       }
     }
-  };
+  }, [layerDisplayList, selectedRecord?.id]);
 
-  const handleSpatialSubsetChange = (newSpatialSubset) => {
+  const handleSpatialSubsetChange = useCallback((newSpatialSubset) => {
     setSpatialSubset(newSpatialSubset);
-  };
+  }, []);
 
   // Priority management for bottom components
   const hideStationChartWithPriority = useCallback(() => {
@@ -377,20 +417,43 @@ export function DashboardContent({ loadingData }) {
     layerData,
   ]);
 
+  // Auto-select top animatable dataset - FIX: Remove selectedDatasetId from dependencies
+  useEffect(() => {
+    const topAnimatableDataset = [...layerDisplayList]
+      .reverse()
+      .find((d) =>
+        shouldShowAnimation(d, allDatasetLayerData.current.get(d.id))
+      );
+
+    // Only update if there's actually a change needed
+    if (topAnimatableDataset && selectedDatasetId !== topAnimatableDataset.id) {
+      setSelectedDatasetId(topAnimatableDataset.id);
+      const storedLayerData = allDatasetLayerData.current.get(
+        topAnimatableDataset.id
+      );
+      if (storedLayerData) {
+        setSelectedRecord(topAnimatableDataset);
+        setLayerData(storedLayerData);
+      }
+    } else if (!topAnimatableDataset && selectedDatasetId !== null) {
+      setSelectedDatasetId(null);
+    }
+  }, [layerDisplayList]); // Removed selectedDatasetId from dependencies
+
   useEffect(() => {
     if (hasResults) {
       setActiveBottomComponent('analysis-results');
     }
   }, [hasResults]);
 
-  // Update animation features when layer data changes
+  // Update animation features when layer data changes - FIX: Remove currentActiveFeature dependency
   useEffect(() => {
     if (selectedRecord && shouldShowAnimation(selectedRecord, layerData)) {
       const features = getAnimationFeatures(selectedRecord, layerData);
       setAnimationFeatures(features);
 
-      // Set initial state if we don't have an active feature
-      if (features.length > 0 && !currentActiveFeature) {
+      // Only set initial state if we don't have features yet
+      if (features.length > 0 && animationFeatures.length === 0) {
         const initialFeature = features[0];
         const initialDate =
           initialFeature?.properties?.datetime ||
@@ -409,14 +472,16 @@ export function DashboardContent({ loadingData }) {
     } else {
       setAnimationFeatures([]);
     }
-  }, [selectedRecord, layerData, currentActiveFeature]);
+  }, [selectedRecord, layerData, animationFeatures.length]); // Changed dependency
 
-  // Get animatable datasets for dropdown
-  const animatableDatasets = layerDisplayList.filter((dataset) =>
-    shouldShowAnimation(dataset, allDatasetLayerData.current.get(dataset.id))
-  );
+  // Get animatable datasets for dropdown - Memoize to prevent recreations
+  const animatableDatasets = useMemo(() => {
+    return layerDisplayList.filter((dataset) =>
+      shouldShowAnimation(dataset, allDatasetLayerData.current.get(dataset.id))
+    );
+  }, [layerDisplayList]);
 
-  const handleDatasetChange = (event) => {
+  const handleDatasetChange = useCallback((event) => {
     const newDatasetId = event.target.value;
     setSelectedDatasetId(newDatasetId);
 
@@ -432,31 +497,9 @@ export function DashboardContent({ loadingData }) {
       moveLayerToTop(newDatasetId);
       setActiveBottomComponent('animation');
     }
-  };
+  }, [layerDisplayList, moveLayerToTop]);
 
-  // Auto-select top animatable dataset
-  useEffect(() => {
-    const topAnimatableDataset = [...layerDisplayList]
-      .reverse()
-      .find((d) =>
-        shouldShowAnimation(d, allDatasetLayerData.current.get(d.id))
-      );
-
-    if (topAnimatableDataset && selectedDatasetId !== topAnimatableDataset.id) {
-      setSelectedDatasetId(topAnimatableDataset.id);
-      const storedLayerData = allDatasetLayerData.current.get(
-        topAnimatableDataset.id
-      );
-      if (storedLayerData) {
-        setSelectedRecord(topAnimatableDataset);
-        setLayerData(storedLayerData);
-      }
-    } else if (!topAnimatableDataset) {
-      setSelectedDatasetId(null);
-    }
-  }, [layerDisplayList, selectedDatasetId]);
-
-  const aoiAsSpatialSubset = React.useMemo(() => {
+  const aoiAsSpatialSubset = useMemo(() => {
     if (!aoiState.selectedAOI) return spatialSubset;
     try {
       const bounds = bbox(aoiState.selectedAOI);
@@ -471,7 +514,29 @@ export function DashboardContent({ loadingData }) {
     }
   }, [aoiState.selectedAOI, spatialSubset]);
 
-  const titleDropdown = (
+  // Memoize the layer data passed to DeckGlLayerManager
+  const deckLayerData = useMemo(() => {
+    if (selectedRecord?.type === 'raster') {
+      return {
+        ...layerData,
+        features: currentRasterFeature
+          ? [currentRasterFeature]
+          : Array.isArray(layerData?.features) &&
+              layerData.features.length > 0
+            ? [layerData.features[0]]
+            : [],
+      };
+    } else if (selectedRecord?.type === 'netcdf-2d' && currentActiveFeature) {
+      return {
+        ...layerData,
+        datetime: currentActiveDate,
+        activeFeature: currentActiveFeature,
+      };
+    }
+    return layerData;
+  }, [selectedRecord, layerData, currentRasterFeature, currentActiveFeature, currentActiveDate]);
+
+  const titleDropdown = useMemo(() => (
     <div className='mb-3'>
       <select
         id='dataset-select'
@@ -487,7 +552,7 @@ export function DashboardContent({ loadingData }) {
         ))}
       </select>
     </div>
-  );
+  ), [selectedDatasetId, handleDatasetChange, animatableDatasets]);
 
   return (
     <Box className='fullSize'>
@@ -527,54 +592,64 @@ export function DashboardContent({ loadingData }) {
             elevation={16}
           >
             <Stack sx={{ p: 1.5, overflowY: 'auto' }} spacing={1.5}>
-              <Title title={TITLE} description={DESCRIPTION} />
-              <AOIControls
-                layerDisplayList={layerDisplayList}
-                onStartDrawing={startDrawing}
-                onClearAOI={clearAOI}
-                onRunAnalysis={runAnalysis}
-                position='embedded'
-                activeDate={currentActiveDate}
-                activeLayer={selectedRecord}
-              />
+              {/* Dashboard Title Section */}
+              <CollapsibleSection title="Dashboard" defaultExpanded={true}>
+                {/* <Title title={TITLE} description={DESCRIPTION} /> */}
+              </CollapsibleSection>
 
-              {/* Animation component for all animatable datasets */}
+              {/* AOI Controls Section */}
+              <CollapsibleSection title="Area of Interest" defaultExpanded={true}>
+                <AOIControls
+                  layerDisplayList={layerDisplayList}
+                  onStartDrawing={startDrawing}
+                  onClearAOI={clearAOI}
+                  onRunAnalysis={runAnalysis}
+                  position='embedded'
+                  activeDate={currentActiveDate}
+                  activeLayer={selectedRecord}
+                />
+              </CollapsibleSection>
+
+              {/* Animation Controls Section */}
               {activeBottomComponent === 'animation' &&
                 selectedDatasetId &&
                 selectedRecord &&
                 shouldShowAnimation(selectedRecord, layerData) &&
                 animationFeatures.length > 0 && (
-                  <div
-                    style={{
-                      right: 10,
-                      minWidth: 0,
-                      bottom: '10px',
-                      width: '100%',
-                      zIndex: 1302,
-                      background: 'white',
-                      borderRadius: 8,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    }}
-                  >
-                    <ItemAnimation
-                      items={animationFeatures}
-                      onFrameChange={handleFrameChange}
-                      title={titleDropdown}
-                      initialAutoPlay={false}
-                      speedMs={getAnimationSpeed(selectedRecord?.time_interval)}
-                    />
-                  </div>
+                  <CollapsibleSection title="Animation Controls" defaultExpanded={true}>
+                    <div
+                      style={{
+                        width: '100%',
+                        background: 'white',
+                        borderRadius: 8,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                      }}
+                    >
+                      <ItemAnimation
+                        items={animationFeatures}
+                        onFrameChange={handleFrameChange}
+                        title={titleDropdown}
+                        initialAutoPlay={false}
+                        speedMs={getAnimationSpeed(selectedRecord?.time_interval)}
+                      />
+                    </div>
+                  </CollapsibleSection>
                 )}
 
-              <RecordDetailView
-                record={selectedRecord}
-                allActiveDatasets={layerDisplayList}
-                allActiveLayers={allActiveLayers.current}
-                onLayerOpacityChange={handleOpacityChange}
-                onLevelVisibilityChange={handleLevelVisibilityChange}
-                onLayerRemove={handleLayerRemove}
-                onLayerReorder={handleLayerReorder}
-              />
+              {/* Active Datasets Section */}
+              {layerDisplayList.length > 0 && (
+                <CollapsibleSection title="Active Datasets" defaultExpanded={true}>
+                  <RecordDetailView
+                    record={selectedRecord}
+                    allActiveDatasets={layerDisplayList}
+                    allActiveLayers={allActiveLayers.current}
+                    onLayerOpacityChange={handleOpacityChange}
+                    onLevelVisibilityChange={handleLevelVisibilityChange}
+                    onLayerRemove={handleLayerRemove}
+                    onLayerReorder={handleLayerReorder}
+                  />
+                </CollapsibleSection>
+              )}
             </Stack>
           </Paper>
           <MapControls openDrawer={openDrawer} setOpenDrawer={setOpenDrawer} />
@@ -583,25 +658,7 @@ export function DashboardContent({ loadingData }) {
           <DeckGlLayerManager
             activeLayerUrl={activeLayerUrl}
             updateActiveLayers={updateActiveLayers}
-            layerData={
-              selectedRecord?.type === 'raster'
-                ? {
-                    ...layerData,
-                    features: currentRasterFeature
-                      ? [currentRasterFeature]
-                      : Array.isArray(layerData?.features) &&
-                          layerData.features.length > 0
-                        ? [layerData.features[0]]
-                        : [],
-                  }
-                : selectedRecord?.type === 'netcdf-2d' && currentActiveFeature
-                  ? {
-                      ...layerData,
-                      datetime: currentActiveDate,
-                      activeFeature: currentActiveFeature,
-                    }
-                  : layerData
-            }
+            layerData={deckLayerData}
             galleryType={layerData?.galleryType || selectedRecord?.type}
             datasetId={selectedRecord?.id}
             onStationClick={handleStationClick}

@@ -32,7 +32,7 @@ export const MapboxProvider = ({ children }) => {
       container: mapContainer.current,
       style: mapboxStyleUrl,
       center: [-98.5795, 39.8283],
-      zoom: 1,
+      zoom: 3,
       maxZoom: 8,
       options: {
         trackResize: true,
