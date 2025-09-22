@@ -59,7 +59,7 @@ const flyToTilesetCenter = (tileset, map, fallbackEPTBounds) => {
     const [lng, lat] = cc;
     map.flyTo({
       center: [lng, lat],
-      zoom: 7,
+      zoom: 1,
       pitch: 60,
       bearing: 0,
       duration: 1500,
@@ -74,7 +74,7 @@ const flyToTilesetCenter = (tileset, map, fallbackEPTBounds) => {
     const centerLat = ((s + n) / 2) * (180 / Math.PI);
     map.flyTo({
       center: [centerLng, centerLat],
-      zoom: 7,
+      zoom: 1,
       pitch: 60,
       bearing: 0,
       duration: 1500,
@@ -96,7 +96,7 @@ const flyToTilesetCenter = (tileset, map, fallbackEPTBounds) => {
       (2 * Math.atan(Math.exp(centerY / 6378137.0)) - Math.PI / 2);
     map.flyTo({
       center: [centerLng, centerLat],
-      zoom: 7,
+      zoom: 1,
       pitch: 60,
       bearing: 0,
       duration: 1500,
@@ -321,6 +321,7 @@ export function DeckGlLayerManager({
             id: layerId,
             data: url,
             pickable: true,
+            beforeId: 'admin-1-boundary-bg',
             visible,
             opacity: dynamicOpacity,
             onTilesetLoad: (tileset) => {
@@ -372,6 +373,7 @@ export function DeckGlLayerManager({
           minZoom: 0,
           maxZoom: 19,
           tileSize: 256,
+          beforeId: 'admin-1-boundary-bg',
           visible,
           pickable: true,
           opacity: dynamicOpacity,
@@ -421,7 +423,6 @@ export function DeckGlLayerManager({
       }
 
       case 'netcdf-2d': {
-        console.log("Layer Data:", layerData);
         const { conceptId, datetime, variable, ...rest } = layerData;
         if (!conceptId || !datetime || !variable) break;
 
@@ -459,22 +460,25 @@ export function DeckGlLayerManager({
           const lev = levValues[index];
           if (lev === undefined) return;
           const maxPressure = Math.max(...levValues);
-          const relativeZOffset = baseZOffset + (maxPressure - lev) * 1000;
+          // const relativeZOffset = baseZOffset + (maxPressure - lev) * 1000;
+          const relativeZOffset = 0;
           const isLayerVisible =
             layerOpacityList.find((d) => d.id === datasetId)?.levelVisibility?.[
               lev
-            ] ?? true;
+            ] ?? false;
 
           const netcdfLayer = new TileLayer({
             id: `${getLayerId('netcdf-2d', datasetId)}-lev-${lev}`,
             data: tileUrl,
             minZoom: 0,
-            maxZoom: 19,
+            maxZoom: 3,
             tileSize: 256,
             visible: isLayerVisible && visible,
             pickable: true,
             opacity: dynamicOpacity,
-            refinementStrategy: 'best-available',
+            debounce: 500,
+            zoom: 1,
+            beforeId: 'admin-1-boundary-bg',
             renderSubLayers: (props) => {
               const {
                 bbox: { west, south, east, north },
@@ -535,6 +539,7 @@ export function DeckGlLayerManager({
           }),
           getPosition: (d) => d.position,
           getSize: 24,
+          beforeId: 'admin-1-boundary-bg',
           sizeScale: 1,
           sizeMinPixels: 16,
           sizeMaxPixels: 32,

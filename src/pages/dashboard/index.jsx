@@ -31,7 +31,7 @@ import { AnalysisResults } from '../../components/aoi/AnalysisResults';
 import {
   shouldShowAnimation,
   getAnimationFeatures,
-  getAnimationSpeed
+  getAnimationSpeed,
 } from '../../utils/animationUtils';
 
 const TITLE = 'RSIG Dashboard';
@@ -123,31 +123,37 @@ export function DashboardContent({ loadingData }) {
 
       const newItem = { ...dataset, opacity: 100 };
       if (newItem.type === 'netcdf-2d') {
-        newItem.levelVisibility = { 1000: true, 500: true };
+        newItem.levelVisibility = {
+          1000: true,
+          850: false,
+          550: false,
+          250: false,
+        };
       }
       return [...currentList, newItem];
     });
   };
 
-  const handleFrameChange = useCallback((feature) => {
-    console.log('Frame changed:', feature);
-    
-    // Handle different dataset types
-    if (selectedRecord?.type === 'raster') {
-      setCurrentRasterFeature(feature);
-    }
-    
-    // Set active date and feature for all animatable datasets
-    const activeDate =
-      feature?.properties?.start_datetime ||
-      feature?.properties?.datetime ||
-      feature?.properties?.date;
-      
-    if (activeDate) {
-      setCurrentActiveDate(activeDate);
-      setCurrentActiveFeature(feature);
-    }
-  }, [selectedRecord?.type]);
+  const handleFrameChange = useCallback(
+    (feature) => {
+      // Handle different dataset types
+      if (selectedRecord?.type === 'raster') {
+        setCurrentRasterFeature(feature);
+      }
+
+      // Set active date and feature for all animatable datasets
+      const activeDate =
+        feature?.properties?.start_datetime ||
+        feature?.properties?.datetime ||
+        feature?.properties?.date;
+
+      if (activeDate) {
+        setCurrentActiveDate(activeDate);
+        setCurrentActiveFeature(feature);
+      }
+    },
+    [selectedRecord?.type]
+  );
 
   const allActiveLayers = useRef([]);
   const updateActiveLayers = (layers) => {
@@ -172,25 +178,26 @@ export function DashboardContent({ loadingData }) {
     if (shouldShowAnimation(datasetInfo, actualData)) {
       const features = getAnimationFeatures(datasetInfo, actualData);
       setAnimationFeatures(features);
-      
+
       // Set initial frame
       if (features.length > 0) {
         const initialFeature = features[0];
-        const initialDate = initialFeature?.properties?.datetime || 
-                          initialFeature?.properties?.start_datetime ||
-                          initialFeature?.properties?.date;
-        
+        const initialDate =
+          initialFeature?.properties?.datetime ||
+          initialFeature?.properties?.start_datetime ||
+          initialFeature?.properties?.date;
+
         if (initialDate) {
           setCurrentActiveDate(initialDate);
           setCurrentActiveFeature(initialFeature);
         }
-        
+
         // For raster datasets, also set the raster feature
         if (datasetInfo.type === 'raster') {
           setCurrentRasterFeature(initialFeature);
         }
       }
-      
+
       setActiveBottomComponent('animation');
     }
 
@@ -245,15 +252,19 @@ export function DashboardContent({ loadingData }) {
   const handleLayerReorder = (reorderedLayers) => {
     setLayerDisplayList(reorderedLayers);
     allActiveDatasets.current = reorderedLayers;
-    
+
     // Update the top animatable dataset
     const newTopAnimatable = [...reorderedLayers]
       .reverse()
-      .find((d) => shouldShowAnimation(d, allDatasetLayerData.current.get(d.id)));
-      
+      .find((d) =>
+        shouldShowAnimation(d, allDatasetLayerData.current.get(d.id))
+      );
+
     if (newTopAnimatable && newTopAnimatable.id !== selectedDatasetId) {
       setSelectedDatasetId(newTopAnimatable.id);
-      const storedLayerData = allDatasetLayerData.current.get(newTopAnimatable.id);
+      const storedLayerData = allDatasetLayerData.current.get(
+        newTopAnimatable.id
+      );
       if (storedLayerData) {
         setSelectedRecord(newTopAnimatable);
         setLayerData(storedLayerData);
@@ -290,11 +301,15 @@ export function DashboardContent({ loadingData }) {
       // Find next animatable dataset
       const newTopAnimatable = [...updatedList]
         .reverse()
-        .find((d) => shouldShowAnimation(d, allDatasetLayerData.current.get(d.id)));
-        
+        .find((d) =>
+          shouldShowAnimation(d, allDatasetLayerData.current.get(d.id))
+        );
+
       if (newTopAnimatable) {
         setSelectedDatasetId(newTopAnimatable.id);
-        const storedLayerData = allDatasetLayerData.current.get(newTopAnimatable.id);
+        const storedLayerData = allDatasetLayerData.current.get(
+          newTopAnimatable.id
+        );
         if (storedLayerData) {
           setSelectedRecord(newTopAnimatable);
           setLayerData(storedLayerData);
@@ -318,7 +333,10 @@ export function DashboardContent({ loadingData }) {
     if (activeBottomComponent === 'station-chart') {
       if (hasResults) {
         setActiveBottomComponent('analysis-results');
-      } else if (selectedRecord && shouldShowAnimation(selectedRecord, layerData)) {
+      } else if (
+        selectedRecord &&
+        shouldShowAnimation(selectedRecord, layerData)
+      ) {
         setActiveBottomComponent('animation');
       } else if (selectedRecord?.type === 'point-cloud') {
         setActiveBottomComponent('two-date-switch');
@@ -339,7 +357,10 @@ export function DashboardContent({ loadingData }) {
     if (activeBottomComponent === 'analysis-results') {
       if (isVisible && selectedStation) {
         setActiveBottomComponent('station-chart');
-      } else if (selectedRecord && shouldShowAnimation(selectedRecord, layerData)) {
+      } else if (
+        selectedRecord &&
+        shouldShowAnimation(selectedRecord, layerData)
+      ) {
         setActiveBottomComponent('animation');
       } else if (selectedRecord?.type === 'point-cloud') {
         setActiveBottomComponent('two-date-switch');
@@ -367,19 +388,20 @@ export function DashboardContent({ loadingData }) {
     if (selectedRecord && shouldShowAnimation(selectedRecord, layerData)) {
       const features = getAnimationFeatures(selectedRecord, layerData);
       setAnimationFeatures(features);
-      
+
       // Set initial state if we don't have an active feature
       if (features.length > 0 && !currentActiveFeature) {
         const initialFeature = features[0];
-        const initialDate = initialFeature?.properties?.datetime || 
-                          initialFeature?.properties?.start_datetime ||
-                          initialFeature?.properties?.date;
-        
+        const initialDate =
+          initialFeature?.properties?.datetime ||
+          initialFeature?.properties?.start_datetime ||
+          initialFeature?.properties?.date;
+
         if (initialDate) {
           setCurrentActiveDate(initialDate);
           setCurrentActiveFeature(initialFeature);
         }
-        
+
         if (selectedRecord.type === 'raster') {
           setCurrentRasterFeature(initialFeature);
         }
@@ -390,8 +412,8 @@ export function DashboardContent({ loadingData }) {
   }, [selectedRecord, layerData, currentActiveFeature]);
 
   // Get animatable datasets for dropdown
-  const animatableDatasets = layerDisplayList.filter(
-    (dataset) => shouldShowAnimation(dataset, allDatasetLayerData.current.get(dataset.id))
+  const animatableDatasets = layerDisplayList.filter((dataset) =>
+    shouldShowAnimation(dataset, allDatasetLayerData.current.get(dataset.id))
   );
 
   const handleDatasetChange = (event) => {
@@ -416,11 +438,15 @@ export function DashboardContent({ loadingData }) {
   useEffect(() => {
     const topAnimatableDataset = [...layerDisplayList]
       .reverse()
-      .find((d) => shouldShowAnimation(d, allDatasetLayerData.current.get(d.id)));
-      
+      .find((d) =>
+        shouldShowAnimation(d, allDatasetLayerData.current.get(d.id))
+      );
+
     if (topAnimatableDataset && selectedDatasetId !== topAnimatableDataset.id) {
       setSelectedDatasetId(topAnimatableDataset.id);
-      const storedLayerData = allDatasetLayerData.current.get(topAnimatableDataset.id);
+      const storedLayerData = allDatasetLayerData.current.get(
+        topAnimatableDataset.id
+      );
       if (storedLayerData) {
         setSelectedRecord(topAnimatableDataset);
         setLayerData(storedLayerData);
@@ -511,7 +537,7 @@ export function DashboardContent({ loadingData }) {
                 activeDate={currentActiveDate}
                 activeLayer={selectedRecord}
               />
-              
+
               {/* Animation component for all animatable datasets */}
               {activeBottomComponent === 'animation' &&
                 selectedDatasetId &&
@@ -552,7 +578,7 @@ export function DashboardContent({ loadingData }) {
             </Stack>
           </Paper>
           <MapControls openDrawer={openDrawer} setOpenDrawer={setOpenDrawer} />
-          
+
           {/* DeckGL Layer Manager with enhanced data handling */}
           <DeckGlLayerManager
             activeLayerUrl={activeLayerUrl}
@@ -569,12 +595,12 @@ export function DashboardContent({ loadingData }) {
                         : [],
                   }
                 : selectedRecord?.type === 'netcdf-2d' && currentActiveFeature
-                ? {
-                    ...layerData,
-                    datetime: currentActiveDate,
-                    activeFeature: currentActiveFeature,
-                  }
-                : layerData
+                  ? {
+                      ...layerData,
+                      datetime: currentActiveDate,
+                      activeFeature: currentActiveFeature,
+                    }
+                  : layerData
             }
             galleryType={layerData?.galleryType || selectedRecord?.type}
             datasetId={selectedRecord?.id}
@@ -597,7 +623,7 @@ export function DashboardContent({ loadingData }) {
             currentActiveDate={currentActiveDate}
             currentActiveFeature={currentActiveFeature}
           />
-          
+
           {/* Station chart component */}
           {activeBottomComponent === 'station-chart' &&
             isVisible &&
