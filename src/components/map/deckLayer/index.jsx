@@ -108,9 +108,9 @@ const flyToDatasetBounds = (bounds, map, datasetType) => {
   if (!map || !bounds) return;
 
   const { west, south, east, north } = bounds;
-  
+
   if (datasetType === 'netcdf-2d') {
-    // For netcdf, use zoom level 1
+    // ... (no changes here)
     const centerLng = (west + east) / 2;
     const centerLat = (south + north) / 2;
     map.flyTo({
@@ -121,22 +121,45 @@ const flyToDatasetBounds = (bounds, map, datasetType) => {
       duration: 1500,
     });
   } else if (datasetType === 'point-cloud') {
-    // For point clouds, use higher zoom and 3D pitch
-    map.fitBounds([[west, south], [east, north]], {
-      padding: 100,
-      pitch: 45,
+    // ... (no changes here)
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      {
+        padding: 100,
+        pitch: 45,
+        bearing: 0,
+        duration: 2000,
+      }
+    );
+  } else if (datasetType === 'raster') {
+    // For raster, fly to a specific center and zoom
+    const centerLng = (west + east) / 2; // Or set a custom longitude, e.g., -98.5
+    const centerLat = (south + north) / 2; // Or set a custom latitude, e.g., 39.8
+
+    map.flyTo({
+      center: [centerLng, centerLat],
+      zoom: 2,
+      pitch: 0,
       bearing: 0,
-      duration: 2000,
-    });
-  } else {
-    // For other datasets, fit to bounds
-    map.fitBounds([[west, south], [east, north]], {
-      padding: 50,
       duration: 1500,
     });
+  } else {
+    // For other datasets, fit to bounds (this was the old raster behavior)
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      {
+        padding: 50,
+        duration: 1500,
+      }
+    );
   }
 };
-
 export function DeckGlLayerManager({
   activeLayerUrl,
   layerData,
@@ -161,8 +184,8 @@ export function DeckGlLayerManager({
   const deckOverlay = mapContext?.deckOverlay;
 
   // Memoize updateActiveLayers call to prevent infinite loops
-  const stableManagedLayersString = useMemo(() => 
-    JSON.stringify(Object.keys(managedLayers).sort()), 
+  const stableManagedLayersString = useMemo(
+    () => JSON.stringify(Object.keys(managedLayers).sort()),
     [managedLayers]
   );
 
@@ -208,16 +231,16 @@ export function DeckGlLayerManager({
   const orderedLayers = useMemo(() => {
     const ordered = [];
     const wanted = new Set(layerOpacityList.map((l) => l.id));
-    
+
     layerOpacityList.forEach((cfg) => {
       const ls = managedLayers[cfg.id];
       if (ls && Array.isArray(ls)) ordered.push(...ls);
     });
-    
+
     Object.entries(managedLayers).forEach(([id, ls]) => {
       if (!wanted.has(id) && Array.isArray(ls)) ordered.push(...ls);
     });
-    
+
     if (aoiGeometry && !isDrawingAOI) {
       const aoiData = {
         type: 'FeatureCollection',
@@ -226,8 +249,8 @@ export function DeckGlLayerManager({
       const aoiLayer = new GeoJsonLayer({
         id: 'aoi-visualization',
         data: aoiData,
-        getFillColor: [255, 107, 53, 80],
-        getLineColor: [255, 107, 53, 255],
+        getFillColor: [3, 252, 53, 100],
+        getLineColor: [3, 252, 53, 100],
         getLineWidth: 3,
         pickable: false,
         stroked: true,
@@ -235,7 +258,7 @@ export function DeckGlLayerManager({
       });
       ordered.push(aoiLayer);
     }
-    
+
     return ordered;
   }, [managedLayers, layerOpacityList, aoiGeometry, isDrawingAOI]);
 
@@ -287,7 +310,7 @@ export function DeckGlLayerManager({
 
           newLayers.push(pointCloudLayer);
         }
-        
+
         // Fly to bounds for point cloud datasets - fallback if onTilesetLoad doesn't work
         const pointCloudBounds = spatialSubset || {
           west: -125.0,
@@ -381,7 +404,7 @@ export function DeckGlLayerManager({
         });
 
         newLayers.push(rasterLayer);
-        
+
         // Fly to bounds for raster datasets
         const rasterBounds = spatialSubset || {
           west: -125.0,
@@ -399,7 +422,7 @@ export function DeckGlLayerManager({
 
         // Define CONUS bounds
         const CONUS_BOUNDS = [-125.0, 24.0, -66.5, 49.0];
-        
+
         const varValues = { lev: [250, 550, 850, 1000] };
         const netcdfParams = {
           ...rest,
@@ -456,7 +479,7 @@ export function DeckGlLayerManager({
               const {
                 bbox: { west, south, east, north },
               } = props.tile;
-              
+
               // Simple bounds check - hide tiles completely outside bounds
               if (
                 east < effectiveBounds.west ||
@@ -466,7 +489,7 @@ export function DeckGlLayerManager({
               ) {
                 return null;
               }
-              
+
               return new BitmapLayer({
                 ...props,
                 opacity: dynamicOpacity,
@@ -479,7 +502,7 @@ export function DeckGlLayerManager({
           });
           newLayers.push(netcdfLayer);
         });
-        
+
         // Fly to bounds for netcdf datasets (zoom level 1)
         flyToDatasetBounds(effectiveBounds, mapContext?.map, galleryType);
         break;
@@ -544,12 +567,12 @@ export function DeckGlLayerManager({
             },
         });
         newLayers.push(stationLayer);
-        
+
         // Fly to bounds for feature datasets
         if (filtered.length > 0) {
-          const coords = filtered.map(f => f.geometry.coordinates);
-          const lngs = coords.map(c => c[0]);
-          const lats = coords.map(c => c[1]);
+          const coords = filtered.map((f) => f.geometry.coordinates);
+          const lngs = coords.map((c) => c[0]);
+          const lats = coords.map((c) => c[1]);
           const bounds = {
             west: Math.min(...lngs),
             south: Math.min(...lats),

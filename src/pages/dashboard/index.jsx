@@ -632,7 +632,7 @@ export function DashboardContent({ loadingData }) {
               {/* AOI Controls Section */}
               <CollapsibleSection
                 title='Area of Interest'
-                defaultExpanded={true}
+                defaultExpanded={false}
               >
                 <AOIControls
                   layerDisplayList={layerDisplayList}
@@ -653,7 +653,7 @@ export function DashboardContent({ loadingData }) {
                 animationFeatures.length > 0 && (
                   <CollapsibleSection
                     title='Animation Controls'
-                    defaultExpanded={true}
+                    defaultExpanded={false}
                   >
                     <div
                       style={{

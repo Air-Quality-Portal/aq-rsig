@@ -12,7 +12,7 @@ const drawStyles = [
     type: 'fill',
     filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'true']],
     paint: {
-      'fill-color': '#ff0000',
+      'fill-color': '#03fc35',
       'fill-opacity': 0.2
     }
   },
@@ -22,7 +22,7 @@ const drawStyles = [
     type: 'line',
     filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'true']],
     paint: {
-      'line-color': '#ff0000',
+      'line-color': '#03fc35',
       'line-width': 3
     }
   },
@@ -32,7 +32,7 @@ const drawStyles = [
     type: 'fill',
     filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'false']],
     paint: {
-      'fill-color': '#3388ff',
+      'fill-color': '#03fc35',
       'fill-opacity': 0.2
     }
   },
@@ -42,7 +42,7 @@ const drawStyles = [
     type: 'line',
     filter: ['all', ['==', '$type', 'Polygon'], ['==', 'active', 'false']],
     paint: {
-      'line-color': '#3388ff',
+      'line-color': '#03fc35',
       'line-width': 2
     }
   },
@@ -54,7 +54,7 @@ const drawStyles = [
     paint: {
       'circle-radius': 4,
       'circle-color': '#ffffff',
-      'circle-stroke-color': '#ff0000',
+      'circle-stroke-color': '#03fc35',
       'circle-stroke-width': 2
     }
   }
