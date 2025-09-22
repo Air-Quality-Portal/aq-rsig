@@ -108,7 +108,7 @@ const flyToDatasetBounds = (bounds, map, datasetType) => {
   if (!map || !bounds) return;
 
   const { west, south, east, north } = bounds;
-  
+
   if (datasetType === 'netcdf-2d') {
     // For netcdf, use zoom level 1
     const centerLng = (west + east) / 2;
@@ -122,18 +122,30 @@ const flyToDatasetBounds = (bounds, map, datasetType) => {
     });
   } else if (datasetType === 'point-cloud') {
     // For point clouds, use higher zoom and 3D pitch
-    map.fitBounds([[west, south], [east, north]], {
-      padding: 100,
-      pitch: 45,
-      bearing: 0,
-      duration: 2000,
-    });
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      {
+        padding: 100,
+        pitch: 45,
+        bearing: 0,
+        duration: 2000,
+      }
+    );
   } else {
     // For other datasets, fit to bounds
-    map.fitBounds([[west, south], [east, north]], {
-      padding: 50,
-      duration: 1500,
-    });
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      {
+        padding: 50,
+        duration: 1500,
+      }
+    );
   }
 };
 
@@ -161,8 +173,8 @@ export function DeckGlLayerManager({
   const deckOverlay = mapContext?.deckOverlay;
 
   // Memoize updateActiveLayers call to prevent infinite loops
-  const stableManagedLayersString = useMemo(() => 
-    JSON.stringify(Object.keys(managedLayers).sort()), 
+  const stableManagedLayersString = useMemo(
+    () => JSON.stringify(Object.keys(managedLayers).sort()),
     [managedLayers]
   );
 
@@ -208,16 +220,16 @@ export function DeckGlLayerManager({
   const orderedLayers = useMemo(() => {
     const ordered = [];
     const wanted = new Set(layerOpacityList.map((l) => l.id));
-    
+
     layerOpacityList.forEach((cfg) => {
       const ls = managedLayers[cfg.id];
       if (ls && Array.isArray(ls)) ordered.push(...ls);
     });
-    
+
     Object.entries(managedLayers).forEach(([id, ls]) => {
       if (!wanted.has(id) && Array.isArray(ls)) ordered.push(...ls);
     });
-    
+
     if (aoiGeometry && !isDrawingAOI) {
       const aoiData = {
         type: 'FeatureCollection',
@@ -235,7 +247,7 @@ export function DeckGlLayerManager({
       });
       ordered.push(aoiLayer);
     }
-    
+
     return ordered;
   }, [managedLayers, layerOpacityList, aoiGeometry, isDrawingAOI]);
 
@@ -287,7 +299,7 @@ export function DeckGlLayerManager({
 
           newLayers.push(pointCloudLayer);
         }
-        
+
         // Fly to bounds for point cloud datasets - fallback if onTilesetLoad doesn't work
         const pointCloudBounds = spatialSubset || {
           west: -125.0,
@@ -380,7 +392,7 @@ export function DeckGlLayerManager({
         });
 
         newLayers.push(rasterLayer);
-        
+
         // Fly to bounds for raster datasets
         const rasterBounds = spatialSubset || {
           west: -125.0,
@@ -398,7 +410,7 @@ export function DeckGlLayerManager({
 
         // Define CONUS bounds
         const CONUS_BOUNDS = [-125.0, 24.0, -66.5, 49.0];
-        
+
         const varValues = { lev: [250, 550, 850, 1000] };
         const netcdfParams = {
           ...rest,
@@ -415,7 +427,8 @@ export function DeckGlLayerManager({
           datetime,
           variable,
           varValues,
-          netcdfParams
+          netcdfParams,
+          layerData
         );
         const levValues = varValues?.lev || [];
         const datasetIndex = layerOpacityList.findIndex(
@@ -455,13 +468,13 @@ export function DeckGlLayerManager({
               const {
                 bbox: { west, south, east, north },
               } = props.tile;
-              
+
               // Calculate intersection with CONUS bounds
               const intersectionWest = Math.max(west, effectiveBounds.west);
               const intersectionEast = Math.min(east, effectiveBounds.east);
               const intersectionSouth = Math.max(south, effectiveBounds.south);
               const intersectionNorth = Math.min(north, effectiveBounds.north);
-              
+
               // Skip tiles that don't intersect with CONUS at all
               if (
                 intersectionWest >= intersectionEast ||
@@ -469,21 +482,26 @@ export function DeckGlLayerManager({
               ) {
                 return null;
               }
-              
+
               // Use the intersection bounds instead of full tile bounds for clipping
               return new BitmapLayer({
                 ...props,
                 opacity: dynamicOpacity,
                 data: null,
                 image: props.data,
-                bounds: [intersectionWest, intersectionSouth, intersectionEast, intersectionNorth],
+                bounds: [
+                  intersectionWest,
+                  intersectionSouth,
+                  intersectionEast,
+                  intersectionNorth,
+                ],
                 modelMatrix: new Matrix4().translate([0, 0, relativeZOffset]),
               });
             },
           });
           newLayers.push(netcdfLayer);
         });
-        
+
         // Fly to bounds for netcdf datasets (zoom level 1)
         flyToDatasetBounds(effectiveBounds, mapContext?.map, galleryType);
         break;
@@ -548,12 +566,12 @@ export function DeckGlLayerManager({
             },
         });
         newLayers.push(stationLayer);
-        
+
         // Fly to bounds for feature datasets
         if (filtered.length > 0) {
-          const coords = filtered.map(f => f.geometry.coordinates);
-          const lngs = coords.map(c => c[0]);
-          const lats = coords.map(c => c[1]);
+          const coords = filtered.map((f) => f.geometry.coordinates);
+          const lngs = coords.map((c) => c[0]);
+          const lats = coords.map((c) => c[1]);
           const bounds = {
             west: Math.min(...lngs),
             south: Math.min(...lats),

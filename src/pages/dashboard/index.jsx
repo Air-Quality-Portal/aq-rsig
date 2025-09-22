@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+} from 'react';
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
@@ -42,7 +48,12 @@ const TITLE = 'RSIG Dashboard';
 const DESCRIPTION = '';
 
 // Collapsible Section Component
-const CollapsibleSection = ({ title, children, defaultExpanded = true, sx = {} }) => {
+const CollapsibleSection = ({
+  title,
+  children,
+  defaultExpanded = true,
+  sx = {},
+}) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
 
   return (
@@ -60,17 +71,19 @@ const CollapsibleSection = ({ title, children, defaultExpanded = true, sx = {} }
         }}
         onClick={() => setExpanded(!expanded)}
       >
-        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+        <Typography variant='subtitle2' sx={{ fontWeight: 600 }}>
           {title}
         </Typography>
-        <IconButton size="small" sx={{ p: 0.5 }}>
-          {expanded ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+        <IconButton size='small' sx={{ p: 0.5 }}>
+          {expanded ? (
+            <ExpandLessIcon fontSize='small' />
+          ) : (
+            <ExpandMoreIcon fontSize='small' />
+          )}
         </IconButton>
       </Box>
       <Collapse in={expanded}>
-        <Box sx={{ pt: 1 }}>
-          {children}
-        </Box>
+        <Box sx={{ pt: 1 }}>{children}</Box>
       </Collapse>
     </Box>
   );
@@ -259,10 +272,13 @@ export function DashboardContent({ loadingData }) {
     setOpenDrawer(false);
   }, []);
 
-  const handleStationClick = useCallback((stationFeature) => {
-    showStationChart(stationFeature);
-    setActiveBottomComponent('station-chart');
-  }, [showStationChart]);
+  const handleStationClick = useCallback(
+    (stationFeature) => {
+      showStationChart(stationFeature);
+      setActiveBottomComponent('station-chart');
+    },
+    [showStationChart]
+  );
 
   const handleOpacityChange = useCallback((datasetId, newOpacity) => {
     setLayerDisplayList((currentList) =>
@@ -325,43 +341,46 @@ export function DashboardContent({ loadingData }) {
     });
   }, []);
 
-  const handleLayerRemove = useCallback((datasetId) => {
-    const updatedList = layerDisplayList.filter(
-      (item) => item.id !== datasetId
-    );
-    setLayerDisplayList(updatedList);
-    setDatasetToRemove(datasetId);
+  const handleLayerRemove = useCallback(
+    (datasetId) => {
+      const updatedList = layerDisplayList.filter(
+        (item) => item.id !== datasetId
+      );
+      setLayerDisplayList(updatedList);
+      setDatasetToRemove(datasetId);
 
-    allActiveDatasets.current = allActiveDatasets.current.filter(
-      (item) => item.id !== datasetId
-    );
-    allDatasetLayerData.current.delete(datasetId);
+      allActiveDatasets.current = allActiveDatasets.current.filter(
+        (item) => item.id !== datasetId
+      );
+      allDatasetLayerData.current.delete(datasetId);
 
-    if (selectedRecord?.id === datasetId) {
-      // Find next animatable dataset
-      const newTopAnimatable = [...updatedList]
-        .reverse()
-        .find((d) =>
-          shouldShowAnimation(d, allDatasetLayerData.current.get(d.id))
-        );
+      if (selectedRecord?.id === datasetId) {
+        // Find next animatable dataset
+        const newTopAnimatable = [...updatedList]
+          .reverse()
+          .find((d) =>
+            shouldShowAnimation(d, allDatasetLayerData.current.get(d.id))
+          );
 
-      if (newTopAnimatable) {
-        setSelectedDatasetId(newTopAnimatable.id);
-        const storedLayerData = allDatasetLayerData.current.get(
-          newTopAnimatable.id
-        );
-        if (storedLayerData) {
-          setSelectedRecord(newTopAnimatable);
-          setLayerData(storedLayerData);
+        if (newTopAnimatable) {
+          setSelectedDatasetId(newTopAnimatable.id);
+          const storedLayerData = allDatasetLayerData.current.get(
+            newTopAnimatable.id
+          );
+          if (storedLayerData) {
+            setSelectedRecord(newTopAnimatable);
+            setLayerData(storedLayerData);
+          }
+        } else {
+          setSelectedRecord(null);
+          setLayerData(null);
+          setSelectedDatasetId(null);
+          setAnimationFeatures([]);
         }
-      } else {
-        setSelectedRecord(null);
-        setLayerData(null);
-        setSelectedDatasetId(null);
-        setAnimationFeatures([]);
       }
-    }
-  }, [layerDisplayList, selectedRecord?.id]);
+    },
+    [layerDisplayList, selectedRecord?.id]
+  );
 
   const handleSpatialSubsetChange = useCallback((newSpatialSubset) => {
     setSpatialSubset(newSpatialSubset);
@@ -481,23 +500,28 @@ export function DashboardContent({ loadingData }) {
     );
   }, [layerDisplayList]);
 
-  const handleDatasetChange = useCallback((event) => {
-    const newDatasetId = event.target.value;
-    setSelectedDatasetId(newDatasetId);
+  const handleDatasetChange = useCallback(
+    (event) => {
+      const newDatasetId = event.target.value;
+      setSelectedDatasetId(newDatasetId);
 
-    const selectedDataset = layerDisplayList.find((d) => d.id === newDatasetId);
-    if (selectedDataset) {
-      setSelectedRecord(selectedDataset);
-      const storedLayerData = allDatasetLayerData.current.get(newDatasetId);
-      if (storedLayerData) {
-        setLayerData(storedLayerData);
-      } else {
-        setLayerData(selectedDataset);
+      const selectedDataset = layerDisplayList.find(
+        (d) => d.id === newDatasetId
+      );
+      if (selectedDataset) {
+        setSelectedRecord(selectedDataset);
+        const storedLayerData = allDatasetLayerData.current.get(newDatasetId);
+        if (storedLayerData) {
+          setLayerData(storedLayerData);
+        } else {
+          setLayerData(selectedDataset);
+        }
+        moveLayerToTop(newDatasetId);
+        setActiveBottomComponent('animation');
       }
-      moveLayerToTop(newDatasetId);
-      setActiveBottomComponent('animation');
-    }
-  }, [layerDisplayList, moveLayerToTop]);
+    },
+    [layerDisplayList, moveLayerToTop]
+  );
 
   const aoiAsSpatialSubset = useMemo(() => {
     if (!aoiState.selectedAOI) return spatialSubset;
@@ -521,8 +545,7 @@ export function DashboardContent({ loadingData }) {
         ...layerData,
         features: currentRasterFeature
           ? [currentRasterFeature]
-          : Array.isArray(layerData?.features) &&
-              layerData.features.length > 0
+          : Array.isArray(layerData?.features) && layerData.features.length > 0
             ? [layerData.features[0]]
             : [],
       };
@@ -534,25 +557,34 @@ export function DashboardContent({ loadingData }) {
       };
     }
     return layerData;
-  }, [selectedRecord, layerData, currentRasterFeature, currentActiveFeature, currentActiveDate]);
+  }, [
+    selectedRecord,
+    layerData,
+    currentRasterFeature,
+    currentActiveFeature,
+    currentActiveDate,
+  ]);
 
-  const titleDropdown = useMemo(() => (
-    <div className='mb-3'>
-      <select
-        id='dataset-select'
-        value={selectedDatasetId || ''}
-        onChange={handleDatasetChange}
-        className='w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-      >
-        <option value=''>Select a dataset...</option>
-        {animatableDatasets.map((dataset) => (
-          <option key={dataset.id} value={dataset.id}>
-            {dataset.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  ), [selectedDatasetId, handleDatasetChange, animatableDatasets]);
+  const titleDropdown = useMemo(
+    () => (
+      <div className='mb-3'>
+        <select
+          id='dataset-select'
+          value={selectedDatasetId || ''}
+          onChange={handleDatasetChange}
+          className='w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+        >
+          <option value=''>Select a dataset...</option>
+          {animatableDatasets.map((dataset) => (
+            <option key={dataset.id} value={dataset.id}>
+              {dataset.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    ),
+    [selectedDatasetId, handleDatasetChange, animatableDatasets]
+  );
 
   return (
     <Box className='fullSize'>
@@ -593,12 +625,15 @@ export function DashboardContent({ loadingData }) {
           >
             <Stack sx={{ p: 1.5, overflowY: 'auto' }} spacing={1.5}>
               {/* Dashboard Title Section */}
-              <CollapsibleSection title="Dashboard" defaultExpanded={true}>
+              <CollapsibleSection title='Dashboard' defaultExpanded={true}>
                 {/* <Title title={TITLE} description={DESCRIPTION} /> */}
               </CollapsibleSection>
 
               {/* AOI Controls Section */}
-              <CollapsibleSection title="Area of Interest" defaultExpanded={true}>
+              <CollapsibleSection
+                title='Area of Interest'
+                defaultExpanded={true}
+              >
                 <AOIControls
                   layerDisplayList={layerDisplayList}
                   onStartDrawing={startDrawing}
@@ -616,7 +651,10 @@ export function DashboardContent({ loadingData }) {
                 selectedRecord &&
                 shouldShowAnimation(selectedRecord, layerData) &&
                 animationFeatures.length > 0 && (
-                  <CollapsibleSection title="Animation Controls" defaultExpanded={true}>
+                  <CollapsibleSection
+                    title='Animation Controls'
+                    defaultExpanded={true}
+                  >
                     <div
                       style={{
                         width: '100%',
@@ -630,7 +668,9 @@ export function DashboardContent({ loadingData }) {
                         onFrameChange={handleFrameChange}
                         title={titleDropdown}
                         initialAutoPlay={false}
-                        speedMs={getAnimationSpeed(selectedRecord?.time_interval)}
+                        speedMs={getAnimationSpeed(
+                          selectedRecord?.time_interval
+                        )}
                       />
                     </div>
                   </CollapsibleSection>
@@ -638,7 +678,10 @@ export function DashboardContent({ loadingData }) {
 
               {/* Active Datasets Section */}
               {layerDisplayList.length > 0 && (
-                <CollapsibleSection title="Active Datasets" defaultExpanded={true}>
+                <CollapsibleSection
+                  title='Active Datasets'
+                  defaultExpanded={true}
+                >
                   <RecordDetailView
                     record={selectedRecord}
                     allActiveDatasets={layerDisplayList}
