@@ -165,12 +165,12 @@ export const buildNetCDF2DTileUrl = (
   datetime,
   variable,
   varValues,
+  layerData,
   options = {}
 ) => {
   if (!varValues || Object.keys(varValues).length === 0) {
     return [];
   }
-
   // const baseUrl =
   //   'https://v4jec6i5c0.execute-api.us-west-2.amazonaws.com/tiles/WebMercatorQuad/{z}/{x}/{y}';
   const baseUrl =
@@ -179,7 +179,7 @@ export const buildNetCDF2DTileUrl = (
   const baseParams = {
     concept_id: 'C2837626477-GES_DISC',
     variable: 'o3',
-    rescale: '20,70',
+    rescale: layerData.rescale || '20,70',
     backend: 'xarray',
     sel_method: 'nearest',
     colormap_name: 'reds',

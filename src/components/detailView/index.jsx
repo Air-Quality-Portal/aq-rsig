@@ -7,6 +7,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import OpacityIcon from '@mui/icons-material/Opacity';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Slider from '@mui/material/Slider';
@@ -158,9 +160,10 @@ const DatasetCard = ({
   onRemove,
   isTopLayer,
 }) => {
-  const { id, name, opacity = 100, units } = dataset; // Destructure units here
+  const { id, name, opacity = 100, units } = dataset;
   const [opacityAnchorEl, setOpacityAnchorEl] = useState(null);
   const [levelsAnchorEl, setLevelsAnchorEl] = useState(null);
+  const [previousOpacity, setPreviousOpacity] = useState(100);
 
   const handleOpacityClick = (event) => setOpacityAnchorEl(event.currentTarget);
   const handleOpacityClose = () => setOpacityAnchorEl(null);
@@ -170,6 +173,19 @@ const DatasetCard = ({
   const handleSliderChange = (event, newValue) => {
     onOpacityChange(id, newValue);
   };
+
+  const handleVisibilityToggle = () => {
+    if (opacity > 0) {
+      // Hide layer - store current opacity and set to 0
+      setPreviousOpacity(opacity);
+      onOpacityChange(id, 0);
+    } else {
+      // Show layer - restore previous opacity (or 100 if previous was also 0)
+      onOpacityChange(id, previousOpacity > 0 ? previousOpacity : 100);
+    }
+  };
+
+  const isVisible = opacity > 0;
 
   let pressureLevels = [];
   if (dataset.type === 'netcdf-2d') {
@@ -223,6 +239,13 @@ const DatasetCard = ({
               </Box>
               <IconButton size='small' onClick={handleOpacityClick}>
                 <OpacityIcon fontSize='small' />
+              </IconButton>
+              <IconButton size='small' onClick={handleVisibilityToggle}>
+                {isVisible ? (
+                  <VisibilityIcon fontSize='small' />
+                ) : (
+                  <VisibilityOffIcon fontSize='small' />
+                )}
               </IconButton>
               <IconButton size='small' onClick={() => onRemove(id)}>
                 <DeleteIcon fontSize='small' />

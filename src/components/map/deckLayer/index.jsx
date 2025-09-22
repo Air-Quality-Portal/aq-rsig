@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { IconLayer, BitmapLayer } from '@deck.gl/layers';
 import { Tile3DLayer, TileLayer } from '@deck.gl/geo-layers';
 import { GeoJsonLayer } from '@deck.gl/layers';
@@ -59,7 +59,7 @@ const flyToTilesetCenter = (tileset, map, fallbackEPTBounds) => {
     const [lng, lat] = cc;
     map.flyTo({
       center: [lng, lat],
-      zoom: 7,
+      zoom: 1,
       pitch: 60,
       bearing: 0,
       duration: 1500,
@@ -74,7 +74,7 @@ const flyToTilesetCenter = (tileset, map, fallbackEPTBounds) => {
     const centerLat = ((s + n) / 2) * (180 / Math.PI);
     map.flyTo({
       center: [centerLng, centerLat],
-      zoom: 7,
+      zoom: 1,
       pitch: 60,
       bearing: 0,
       duration: 1500,
@@ -96,7 +96,7 @@ const flyToTilesetCenter = (tileset, map, fallbackEPTBounds) => {
       (2 * Math.atan(Math.exp(centerY / 6378137.0)) - Math.PI / 2);
     map.flyTo({
       center: [centerLng, centerLat],
-      zoom: 7,
+      zoom: 1,
       pitch: 60,
       bearing: 0,
       duration: 1500,
@@ -104,6 +104,62 @@ const flyToTilesetCenter = (tileset, map, fallbackEPTBounds) => {
   }
 };
 
+const flyToDatasetBounds = (bounds, map, datasetType) => {
+  if (!map || !bounds) return;
+
+  const { west, south, east, north } = bounds;
+
+  if (datasetType === 'netcdf-2d') {
+    // ... (no changes here)
+    const centerLng = (west + east) / 2;
+    const centerLat = (south + north) / 2;
+    map.flyTo({
+      center: [centerLng, centerLat],
+      zoom: 1,
+      pitch: 0,
+      bearing: 0,
+      duration: 1500,
+    });
+  } else if (datasetType === 'point-cloud') {
+    // ... (no changes here)
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      {
+        padding: 100,
+        pitch: 45,
+        bearing: 0,
+        duration: 2000,
+      }
+    );
+  } else if (datasetType === 'raster') {
+    // For raster, fly to a specific center and zoom
+    const centerLng = (west + east) / 2; // Or set a custom longitude, e.g., -98.5
+    const centerLat = (south + north) / 2; // Or set a custom latitude, e.g., 39.8
+
+    map.flyTo({
+      center: [centerLng, centerLat],
+      zoom: 2,
+      pitch: 0,
+      bearing: 0,
+      duration: 1500,
+    });
+  } else {
+    // For other datasets, fit to bounds (this was the old raster behavior)
+    map.fitBounds(
+      [
+        [west, south],
+        [east, north],
+      ],
+      {
+        padding: 50,
+        duration: 1500,
+      }
+    );
+  }
+};
 export function DeckGlLayerManager({
   activeLayerUrl,
   layerData,
@@ -127,9 +183,15 @@ export function DeckGlLayerManager({
   const mapContext = useMapbox();
   const deckOverlay = mapContext?.deckOverlay;
 
+  // Memoize updateActiveLayers call to prevent infinite loops
+  const stableManagedLayersString = useMemo(
+    () => JSON.stringify(Object.keys(managedLayers).sort()),
+    [managedLayers]
+  );
+
   useEffect(() => {
     updateActiveLayers?.(managedLayers);
-  }, [managedLayers, updateActiveLayers]);
+  }, [stableManagedLayersString, updateActiveLayers]);
 
   useEffect(() => {
     if (datasetToRemove) {
@@ -143,37 +205,42 @@ export function DeckGlLayerManager({
     }
   }, [datasetToRemove]);
 
-  // Clear raster layers when item changes
+  // Clear raster layers when item changes - FIX: Remove currentRasterItem from dependencies
   useEffect(() => {
     if (galleryType === 'raster' && layerData?.features?.[0]) {
       const newItemId = layerData.features[0].id;
 
-      if (currentRasterItem && currentRasterItem !== newItemId) {
-        setManagedLayers((prev) => {
-          const updated = { ...prev };
-          if (updated[datasetId]) {
-            delete updated[datasetId];
-          }
-          return updated;
-        });
-
-        setLayerRefreshCounter((prev) => prev + 1);
+      // Only update if the item actually changed
+      if (currentRasterItem !== newItemId) {
+        if (currentRasterItem) {
+          setManagedLayers((prev) => {
+            const updated = { ...prev };
+            if (updated[datasetId]) {
+              delete updated[datasetId];
+            }
+            return updated;
+          });
+          setLayerRefreshCounter((prev) => prev + 1);
+        }
+        setCurrentRasterItem(newItemId);
       }
-
-      setCurrentRasterItem(newItemId);
     }
-  }, [layerData?.features?.[0]?.id, galleryType, datasetId, currentRasterItem]);
+  }, [layerData?.features?.[0]?.id, galleryType, datasetId]);
 
-  const getOrderedLayers = () => {
+  // Memoize the ordered layers calculation
+  const orderedLayers = useMemo(() => {
     const ordered = [];
     const wanted = new Set(layerOpacityList.map((l) => l.id));
+
     layerOpacityList.forEach((cfg) => {
       const ls = managedLayers[cfg.id];
       if (ls && Array.isArray(ls)) ordered.push(...ls);
     });
+
     Object.entries(managedLayers).forEach(([id, ls]) => {
       if (!wanted.has(id) && Array.isArray(ls)) ordered.push(...ls);
     });
+
     if (aoiGeometry && !isDrawingAOI) {
       const aoiData = {
         type: 'FeatureCollection',
@@ -182,8 +249,8 @@ export function DeckGlLayerManager({
       const aoiLayer = new GeoJsonLayer({
         id: 'aoi-visualization',
         data: aoiData,
-        getFillColor: [255, 107, 53, 80],
-        getLineColor: [255, 107, 53, 255],
+        getFillColor: [3, 252, 53, 100],
+        getLineColor: [3, 252, 53, 100],
         getLineWidth: 3,
         pickable: false,
         stroked: true,
@@ -191,16 +258,17 @@ export function DeckGlLayerManager({
       });
       ordered.push(aoiLayer);
     }
-    return ordered;
-  };
 
+    return ordered;
+  }, [managedLayers, layerOpacityList, aoiGeometry, isDrawingAOI]);
+
+  // Update deck overlay with memoized layers
   useEffect(() => {
-    const allLayers = getOrderedLayers();
     if (deckOverlay) {
-      deckOverlay.setProps({ layers: allLayers });
+      deckOverlay.setProps({ layers: orderedLayers });
     }
-    onLayersUpdate?.(allLayers);
-  }, [managedLayers, deckOverlay, onLayersUpdate, layerOpacityList]);
+    onLayersUpdate?.(orderedLayers);
+  }, [orderedLayers, deckOverlay, onLayersUpdate]);
 
   useEffect(() => {
     if (!datasetId) return;
@@ -222,92 +290,6 @@ export function DeckGlLayerManager({
     let newLayers = [];
 
     switch (galleryType) {
-      ///point cloud layer with trajectory layer
-      // case 'point-cloud': {
-      //   const template = layerData?.tilesetTemplate || activeLayerUrl || '';
-      //   if (!template) break;
-
-      //   // Wrap async logic in IIFE inside useEffect
-      //   (async () => {
-      //     const newLayers = [];
-
-      //     // Add point cloud layers
-      //     for (let i = 1; i <= 19; i++) {
-      //       const layerId = `${getLayerId('pointcloud', datasetId)}-${i}`;
-      //       const url = template.replace('{i}', i);
-
-      //       const pointCloudLayer = new Tile3DLayer({
-      //         id: layerId,
-      //         data: url,
-      //         pickable: true,
-      //         visible,
-      //         opacity: dynamicOpacity,
-      //         onTilesetLoad: (tileset) => {
-      //           const fallbackBounds = layerData?.asset?.ept?.bounds;
-      //           flyToTilesetCenter(tileset, mapContext?.map, fallbackBounds);
-      //         },
-      //       });
-
-      //       newLayers.push(pointCloudLayer);
-      //     }
-
-      //     // Fetch GeoJSON trajectory file
-      //     try {
-      //       const response = await fetch('https://rsig-point-cloud.s3.us-west-2.amazonaws.com/trajectory_line_sampled.geojson');
-      //       const trajectoryGeoJson = await response.json();
-
-      //       // CONUS bounds
-      //       const conusBounds = {
-      //         west: -125,
-      //         east: -66,
-      //         north: 149,
-      //         south: 25,
-      //       };
-
-      //       // Filter coordinates to only include CONUS region
-      //       const filteredCoordinates =
-      //         trajectoryGeoJson.geometry.coordinates.filter(([lon, lat]) => {
-      //           return (
-      //             lon >= conusBounds.west &&
-      //             lon <= conusBounds.east &&
-      //             lat >= conusBounds.south &&
-      //             lat <= conusBounds.north
-      //           );
-      //         });
-
-      //       const conusTrajectory = {
-      //         type: 'Feature',
-      //         geometry: {
-      //           type: 'LineString',
-      //           coordinates: filteredCoordinates,
-      //         },
-      //       };
-
-      //       const trajectoryLayer = new GeoJsonLayer({
-      //         id: 'satellite-trajectory-layer',
-      //         data: conusTrajectory,
-      //         pickable: true,
-      //         stroked: true,
-      //         filled: false,
-      //         lineWidthScale: 20,
-      //         lineWidthMinPixels: 2,
-      //         getLineColor: [0, 255, 0],
-      //         getLineWidth: 2,
-      //         visible: true,
-      //         modelMatrix: new Matrix4().translate([0, 0, 0]),
-      //       });
-
-      //       newLayers.push(trajectoryLayer);
-      //     } catch (err) {
-      //       console.error('Failed to load trajectory GeoJSON:', err);
-      //     }
-
-      //     // Set layers
-      //     setManagedLayers((prev) => ({ ...prev, [datasetId]: newLayers }));
-      //   })();
-
-      //   break;
-      // }
       case 'point-cloud': {
         const template = layerData?.tilesetTemplate || activeLayerUrl || '';
         if (!template) break;
@@ -321,19 +303,22 @@ export function DeckGlLayerManager({
             id: layerId,
             data: url,
             pickable: true,
+            beforeId: 'admin-1-boundary-bg',
             visible,
             opacity: dynamicOpacity,
-            onTilesetLoad: (tileset) => {
-              const fallbackBounds = layerData?.asset?.ept?.bounds;
-              flyToTilesetCenter(tileset, mapContext?.map, fallbackBounds);
-            },
           });
 
           newLayers.push(pointCloudLayer);
         }
 
-        setManagedLayers((prev) => ({ ...prev, [datasetId]: newLayers }));
-
+        // Fly to bounds for point cloud datasets - fallback if onTilesetLoad doesn't work
+        const pointCloudBounds = spatialSubset || {
+          west: -125.0,
+          south: 24.0,
+          east: -66.5,
+          north: 49.0,
+        };
+        flyToDatasetBounds(pointCloudBounds, mapContext?.map, galleryType);
         break;
       }
 
@@ -370,8 +355,10 @@ export function DeckGlLayerManager({
           id: uniqueLayerId,
           data: tileUrl,
           minZoom: 0,
+          zoom: 2,
           maxZoom: 19,
           tileSize: 256,
+          beforeId: 'admin-1-boundary-bg',
           visible,
           pickable: true,
           opacity: dynamicOpacity,
@@ -417,13 +404,24 @@ export function DeckGlLayerManager({
         });
 
         newLayers.push(rasterLayer);
+
+        // Fly to bounds for raster datasets
+        const rasterBounds = spatialSubset || {
+          west: -125.0,
+          south: 24.0,
+          east: -66.5,
+          north: 49.0,
+        };
+        flyToDatasetBounds(rasterBounds, mapContext?.map, galleryType);
         break;
       }
 
       case 'netcdf-2d': {
-        console.log("Layer Data:", layerData);
         const { conceptId, datetime, variable, ...rest } = layerData;
         if (!conceptId || !datetime || !variable) break;
+
+        // Define CONUS bounds
+        const CONUS_BOUNDS = [-125.0, 24.0, -66.5, 49.0];
 
         const varValues = { lev: [250, 550, 850, 1000] };
         const netcdfParams = {
@@ -448,37 +446,41 @@ export function DeckGlLayerManager({
           (l) => l.id === datasetId
         );
         const baseZOffset = datasetIndex * 10;
-        const DEFAULT_BOUNDS = [-125.0, 1.5, -66.5, 65.5];
         const effectiveBounds = spatialSubset || {
-          west: DEFAULT_BOUNDS[0],
-          south: DEFAULT_BOUNDS[1],
-          east: DEFAULT_BOUNDS[2],
-          north: DEFAULT_BOUNDS[3],
+          west: CONUS_BOUNDS[0],
+          south: CONUS_BOUNDS[1],
+          east: CONUS_BOUNDS[2],
+          north: CONUS_BOUNDS[3],
         };
         tileUrls.forEach((tileUrl, index) => {
           const lev = levValues[index];
           if (lev === undefined) return;
           const maxPressure = Math.max(...levValues);
+          // Keep the correct relative offset formula
           const relativeZOffset = baseZOffset + (maxPressure - lev) * 1000;
           const isLayerVisible =
             layerOpacityList.find((d) => d.id === datasetId)?.levelVisibility?.[
               lev
-            ] ?? true;
+            ] ?? false;
 
           const netcdfLayer = new TileLayer({
             id: `${getLayerId('netcdf-2d', datasetId)}-lev-${lev}`,
             data: tileUrl,
             minZoom: 0,
-            maxZoom: 19,
+            maxZoom: 1,
             tileSize: 256,
             visible: isLayerVisible && visible,
             pickable: true,
             opacity: dynamicOpacity,
-            refinementStrategy: 'best-available',
+            debounce: 500,
+            zoom: 1,
+            beforeId: 'admin-1-boundary-bg',
             renderSubLayers: (props) => {
               const {
                 bbox: { west, south, east, north },
               } = props.tile;
+
+              // Simple bounds check - hide tiles completely outside bounds
               if (
                 east < effectiveBounds.west ||
                 west > effectiveBounds.east ||
@@ -487,6 +489,7 @@ export function DeckGlLayerManager({
               ) {
                 return null;
               }
+
               return new BitmapLayer({
                 ...props,
                 opacity: dynamicOpacity,
@@ -499,6 +502,9 @@ export function DeckGlLayerManager({
           });
           newLayers.push(netcdfLayer);
         });
+
+        // Fly to bounds for netcdf datasets (zoom level 1)
+        flyToDatasetBounds(effectiveBounds, mapContext?.map, galleryType);
         break;
       }
 
@@ -535,6 +541,7 @@ export function DeckGlLayerManager({
           }),
           getPosition: (d) => d.position,
           getSize: 24,
+          beforeId: 'admin-1-boundary-bg',
           sizeScale: 1,
           sizeMinPixels: 16,
           sizeMaxPixels: 32,
@@ -560,6 +567,20 @@ export function DeckGlLayerManager({
             },
         });
         newLayers.push(stationLayer);
+
+        // Fly to bounds for feature datasets
+        if (filtered.length > 0) {
+          const coords = filtered.map((f) => f.geometry.coordinates);
+          const lngs = coords.map((c) => c[0]);
+          const lats = coords.map((c) => c[1]);
+          const bounds = {
+            west: Math.min(...lngs),
+            south: Math.min(...lats),
+            east: Math.max(...lngs),
+            north: Math.max(...lats),
+          };
+          flyToDatasetBounds(bounds, mapContext?.map, galleryType);
+        }
         break;
       }
 
@@ -583,24 +604,43 @@ export function DeckGlLayerManager({
     layerRefreshCounter,
   ]);
 
+  // Update layer properties (opacity, visibility) with stable comparison
+  const layerPropsKey = useMemo(() => {
+    return JSON.stringify({
+      opacityList: layerOpacityList.map((l) => ({
+        id: l.id,
+        opacity: l.opacity,
+        levelVisibility: l.levelVisibility,
+      })),
+      visible,
+    });
+  }, [layerOpacityList, visible]);
+
   useEffect(() => {
     setManagedLayers((prev) => {
       const updated = { ...prev };
+      let hasChanges = false;
+
       for (const entry of layerOpacityList) {
         const { id: dsId, opacity: pct, levelVisibility } = entry;
         const newOpacity = pct / 100;
         if (!updated[dsId]) continue;
+
         const existingLayers = updated[dsId];
-        updated[dsId] = existingLayers.map((layer) => {
+        const updatedLayers = existingLayers.map((layer) => {
           const level = extractPressureLevel(layer.id);
           let newVisibility = visible;
           if (level !== null && levelVisibility) {
             newVisibility = levelVisibility[level] ?? true;
           }
+
           const propsChanged =
             layer.props.opacity !== newOpacity ||
             layer.props.visible !== newVisibility;
+
           if (!propsChanged) return layer;
+
+          hasChanges = true;
           const originalRender = layer.props.renderSubLayers;
           return layer.clone({
             opacity: newOpacity,
@@ -613,10 +653,15 @@ export function DeckGlLayerManager({
             }),
           });
         });
+
+        if (hasChanges) {
+          updated[dsId] = updatedLayers;
+        }
       }
-      return updated;
+
+      return hasChanges ? updated : prev;
     });
-  }, [layerOpacityList, visible]);
+  }, [layerPropsKey]);
 
   return null;
 }

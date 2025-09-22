@@ -33,18 +33,19 @@ export const MapboxProvider = ({ children }) => {
       style: mapboxStyleUrl,
       center: [-98.5795, 39.8283],
       zoom: 3,
+      maxZoom: 8,
       options: {
         trackResize: true,
       },
     }).once('load', () => {
-      window.map = map; // Expose for debugging
+      window.map = map;
       window.MapboxOverlay = MapboxOverlay;
 
       deckOverlay.current = new MapboxOverlay({
         interleaved: true,
         layers: [],
       });
-      window.deckOverlay = deckOverlay.current; // Expose for debugging
+      window.deckOverlay = deckOverlay.current;
       map.current.addControl(deckOverlay.current);
 
       setIsInitialized(true);

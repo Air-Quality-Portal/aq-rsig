@@ -19,13 +19,13 @@ export const galleryData = {
     },
     {
       id: 'TROPESS_reanalysis_mon_emi_O3_anth',
-      name: 'TROPESS Surface O3 Emissions',
+      name: 'TROPESS O3 Emissions',
       type: 'netcdf-2d',
       thumbnailUrl: '/path/to/thumbnail3.jpg',
       description:
         "The TROPESS Chemical Reanalysis Surface Total NOx emissions Monthly 2-dimensional Product contains Ozone (O3) concentration from the total of all sources. The data are part of the Tropospheric Chemical Reanalysis v2 (TCR-2) for the period 2005-2021. TCR-2 uses JPL's Multi-mOdel Multi-cOnstituent Chemical (MOMO-Chem) data assimilation framework that simultaneously optimizes both concentrations and emissions of multiple species from multiple satellite sensors. The data files are written in the netCDF version 4 file format, and each file contains a year of data at monthly resolution, and a spatial resolution of 1.125 x 1.125 degrees. The principal investigator for the TCR-2 data is Miyazaki, Kazuyuki.",
       units: 'kg m-2 s-1',
-      rescale_values: [0, 4.786979e-10],
+      rescale_values: [0,100],
       colormap: 'reds',
       info: 'https://data.nasa.gov/dataset/tropess-chemical-reanalysis-surface-total-nox-emissions-monthly-2-dimensional-product-v1-t-2206f',
       time_interval: 'Monthly',
