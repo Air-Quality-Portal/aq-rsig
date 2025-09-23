@@ -127,6 +127,10 @@ export function DashboardContent({ loadingData }) {
     onDrawCancel,
     clearResults,
     hasResults,
+    areAOIsLoading,
+    aoiLoadError,
+    areAOIsLoaded,
+    retryLoadAOIs,
   } = useAOIIntegration(layerDisplayList, {
     activeDate: currentActiveDate,
     activeLayer: selectedRecord,
@@ -465,7 +469,6 @@ export function DashboardContent({ loadingData }) {
     }
   }, [hasResults]);
 
-  // Update animation features when layer data changes - FIX: Remove currentActiveFeature dependency
   useEffect(() => {
     if (selectedRecord && shouldShowAnimation(selectedRecord, layerData)) {
       const features = getAnimationFeatures(selectedRecord, layerData);
@@ -642,6 +645,10 @@ export function DashboardContent({ loadingData }) {
                   position='embedded'
                   activeDate={currentActiveDate}
                   activeLayer={selectedRecord}
+                  areAOIsLoading={areAOIsLoading}
+                  aoiLoadError={aoiLoadError}
+                  areAOIsLoaded={areAOIsLoaded}
+                  onRetryLoadAOIs={retryLoadAOIs}
                 />
               </CollapsibleSection>
 

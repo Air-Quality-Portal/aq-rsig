@@ -43,6 +43,7 @@ export function groupLayersByTemporalResolution(layers = []) {
   const grouped = {};
 
   layers.forEach((layer) => {
+    console.log('Processing layer:', layer);
     const temporalResolution = detectTemporalResolution(layer);
 
     if (!grouped[temporalResolution]) {
@@ -262,77 +263,222 @@ export function getTemporalDisplayName(resolution) {
 }
 
 /**
- * Get default predefined AOIs
+ * Load all US state GeoJSON files from public directory
+ * Returns a promise that resolves to an array of AOI objects
  */
-export function getDefaultPredefinedAOIs() {
-  return [
-    {
-      id: 'california',
-      name: 'California',
-      description: 'State of California',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-124.409591, 32.534156],
-            [-124.409591, 42.009518],
-            [-114.131211, 42.009518],
-            [-114.131211, 32.534156],
-            [-124.409591, 32.534156],
-          ],
-        ],
-      },
-    },
-    {
-      id: 'chesapeake_bay',
-      name: 'Chesapeake Bay',
-      description: 'Chesapeake Bay region',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-77.5, 36.5],
-            [-77.5, 39.5],
-            [-75.5, 39.5],
-            [-75.5, 36.5],
-            [-77.5, 36.5],
-          ],
-        ],
-      },
-    },
-    {
-      id: 'texas',
-      name: 'Texas',
-      description: 'State of Texas',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-106.645646, 25.837377],
-            [-106.645646, 36.500704],
-            [-93.508039, 36.500704],
-            [-93.508039, 25.837377],
-            [-106.645646, 25.837377],
-          ],
-        ],
-      },
-    },
-    {
-      id: 'florida',
-      name: 'Florida',
-      description: 'State of Florida',
-      geometry: {
-        type: 'Polygon',
-        coordinates: [
-          [
-            [-87.634938, 24.396308],
-            [-87.634938, 31.000888],
-            [-79.974306, 31.000888],
-            [-79.974306, 24.396308],
-            [-87.634938, 24.396308],
-          ],
-        ],
-      },
-    },
+export async function loadStatePredefinedAOIs() {
+  // List of all US states and DC based on the file tree shown
+  const stateFiles = [
+    'Alabama.geojson',
+    'Alaska.geojson', 
+    'Arizona.geojson',
+    'Arkansas.geojson',
+    'California.geojson',
+    'Colorado.geojson',
+    'Connecticut.geojson',
+    'Delaware.geojson',
+    'District of Columbia.geojson',
+    'Florida.geojson',
+    'Georgia.geojson',
+    'Hawaii.geojson',
+    'Idaho.geojson',
+    'Illinois.geojson',
+    'Indiana.geojson',
+    'Iowa.geojson',
+    'Kansas.geojson',
+    'Kentucky.geojson',
+    'Louisiana.geojson',
+    'Maine.geojson',
+    'Maryland.geojson',
+    'Massachusetts.geojson',
+    'Michigan.geojson',
+    'Minnesota.geojson',
+    'Mississippi.geojson',
+    'Missouri.geojson',
+    'Montana.geojson',
+    'Nebraska.geojson',
+    'Nevada.geojson',
+    'New Hampshire.geojson',
+    'New Jersey.geojson',
+    'New Mexico.geojson',
+    'New York.geojson',
+    'North Carolina.geojson',
+    'North Dakota.geojson',
+    'Ohio.geojson',
+    'Oklahoma.geojson',
+    'Oregon.geojson',
+    'Pennsylvania.geojson',
+    'Rhode Island.geojson',
+    'South Carolina.geojson',
+    'South Dakota.geojson',
+    'Tennessee.geojson',
+    'Texas.geojson',
+    'Utah.geojson',
+    'Vermont.geojson',
+    'Virginia.geojson',
+    'Washington.geojson',
+    'West Virginia.geojson',
+    'Wisconsin.geojson',
+    'Wyoming.geojson'
   ];
+
+  console.log('Loading state GeoJSON files...');
+  
+  const loadedStates = [];
+  const failedStates = [];
+
+  // Load all state files in parallel
+  const loadPromises = stateFiles.map(async (filename) => {
+    try {
+      const response = await fetch(`/geo-data/states/${filename}`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const geoJsonData = await response.json();
+      
+      // Extract state name from filename (remove .geojson extension)
+      const stateName = filename.replace('.geojson', '');
+      
+      // Handle special case for DC
+      const displayName = stateName === 'District of Columbia' ? 'Washington D.C.' : stateName;
+      
+      // Create AOI object compatible with existing interface
+      const aoi = {
+        id: stateName.toLowerCase().replace(/\s+/g, '_'),
+        name: displayName,
+        description: `State of ${displayName}`,
+        geometry: geoJsonData.type === 'FeatureCollection' 
+          ? geoJsonData.features[0]?.geometry 
+          : geoJsonData.type === 'Feature'
+          ? geoJsonData.geometry
+          : geoJsonData,
+        source: 'state_geojson'
+      };
+
+      // Validate geometry exists
+      if (!aoi.geometry) {
+        throw new Error('No valid geometry found in GeoJSON');
+      }
+
+      loadedStates.push(aoi);
+      console.log(`✓ Loaded ${displayName}`);
+      
+    } catch (error) {
+      console.warn(`Failed to load ${filename}:`, error.message);
+      failedStates.push({ filename, error: error.message });
+    }
+  });
+
+  // Wait for all promises to resolve
+  await Promise.allSettled(loadPromises);
+
+  // Sort states alphabetically by name
+  loadedStates.sort((a, b) => a.name.localeCompare(b.name));
+
+  console.log(`Successfully loaded ${loadedStates.length} states`);
+  if (failedStates.length > 0) {
+    console.warn(`Failed to load ${failedStates.length} states:`, failedStates);
+  }
+
+  return loadedStates;
+}
+
+/**
+ * Get default predefined AOIs (now loads from GeoJSON files)
+ * Returns a promise that resolves to an array of AOI objects
+ */
+export async function getDefaultPredefinedAOIs() {
+  try {
+    // Load state geometries from GeoJSON files
+    const stateAOIs = await loadStatePredefinedAOIs();
+    
+    // You can still add custom AOIs here if needed
+    const customAOIs = [
+      {
+        id: 'chesapeake_bay',
+        name: 'Chesapeake Bay',
+        description: 'Chesapeake Bay region',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [-77.5, 36.5],
+              [-77.5, 39.5],
+              [-75.5, 39.5],
+              [-75.5, 36.5],
+              [-77.5, 36.5],
+            ],
+          ],
+        },
+        source: 'custom'
+      }
+    ];
+
+    // Combine state AOIs with custom AOIs
+    return [...stateAOIs, ...customAOIs];
+    
+  } catch (error) {
+    console.error('Error loading predefined AOIs:', error);
+    
+    // Fallback to original hardcoded AOIs if loading fails
+    console.warn('Falling back to hardcoded AOIs');
+    return [
+      {
+        id: 'california',
+        name: 'California',
+        description: 'State of California',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [-124.409591, 32.534156],
+              [-124.409591, 42.009518],
+              [-114.131211, 42.009518],
+              [-114.131211, 32.534156],
+              [-124.409591, 32.534156],
+            ],
+          ],
+        },
+        source: 'fallback'
+      },
+      {
+        id: 'texas',
+        name: 'Texas',
+        description: 'State of Texas',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [-106.645646, 25.837377],
+              [-106.645646, 36.500704],
+              [-93.508039, 36.500704],
+              [-93.508039, 25.837377],
+              [-106.645646, 25.837377],
+            ],
+          ],
+        },
+        source: 'fallback'
+      },
+      {
+        id: 'florida',
+        name: 'Florida',
+        description: 'State of Florida',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [
+            [
+              [-87.634938, 24.396308],
+              [-87.634938, 31.000888],
+              [-79.974306, 31.000888],
+              [-79.974306, 24.396308],
+              [-87.634938, 24.396308],
+            ],
+          ],
+        },
+        source: 'fallback'
+      },
+    ];
+  }
 }

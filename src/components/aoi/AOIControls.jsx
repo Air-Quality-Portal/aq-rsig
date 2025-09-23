@@ -14,6 +14,8 @@ import {
   LinearProgress,
   Collapse,
   Divider,
+  CircularProgress,
+  AlertTitle,
 } from '@mui/material';
 import {
   Draw as DrawIcon,
@@ -24,6 +26,8 @@ import {
   Stop as StopIcon,
   KeyboardArrowDown as ArrowDownIcon,
   CheckCircle as CheckIcon,
+  Refresh as RefreshIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
 import { useAOI } from '../../context/aoiContext';
 import { getTemporalDisplayName } from '../../utils/temporalGrouping';
@@ -65,6 +69,11 @@ export function AOIControls({
   position = 'top-left',
   activeDate = null,
   activeLayer = null,
+  // New props for handling AOI loading state
+  areAOIsLoading = false,
+  aoiLoadError = null,
+  areAOIsLoaded = false,
+  onRetryLoadAOIs = null,
 }) {
   const { state, actions } = useAOI();
   const [showPresets, setShowPresets] = useState(false);
@@ -137,6 +146,12 @@ export function AOIControls({
   const handleStopDrawing = useCallback(() => {
     actions.setDrawing(false);
   }, [actions]);
+
+  const handleRetryLoadAOIs = useCallback(() => {
+    if (onRetryLoadAOIs) {
+      onRetryLoadAOIs();
+    }
+  }, [onRetryLoadAOIs]);
 
   const canRunAnalysis =
     state.selectedAOI &&
@@ -303,46 +318,78 @@ export function AOIControls({
                 </Button>
               )}
 
-              {/* Compact presets dropdown */}
-              {state.predefinedAOIs.length > 0 && (
-                <FormControl
-                  size='small'
+              {/* Predefined AOI Select with Loading State */}
+              <FormControl
+                size='small'
+                sx={{
+                  flex: 1,
+                  minWidth: 120,
+                }}
+              >
+                <Select
+                  value=''
+                  onChange={(e) => handlePredefinedAOISelect(e.target.value)}
+                  displayEmpty
+                  disabled={
+                    state.isDrawing ||
+                    state.analysisState.status === 'analyzing' ||
+                    areAOIsLoading ||
+                    (aoiLoadError && !areAOIsLoaded)
+                  }
                   sx={{
-                    flex: 1,
-                    minWidth: 120,
+                    fontSize: '0.75rem',
+                    '& .MuiSelect-select': {
+                      py: 0.5,
+                      px: 1,
+                    },
                   }}
                 >
-                  <Select
-                    value=''
-                    onChange={(e) => handlePredefinedAOISelect(e.target.value)}
-                    displayEmpty
-                    disabled={
-                      state.isDrawing ||
-                      state.analysisState.status === 'analyzing'
-                    }
-                    sx={{
-                      fontSize: '0.75rem',
-                      '& .MuiSelect-select': {
-                        py: 0.5,
-                        px: 1,
-                      },
-                    }}
-                  >
-                    <MenuItem value='' disabled>
-                      <Box
-                        sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
-                      >
-                        <LocationIcon fontSize='small' color='action' />
-                        <Typography
-                          variant='body2'
-                          color='text.secondary'
-                          sx={{ fontSize: '0.75rem' }}
-                        >
-                          Choose preset area
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                    {state.predefinedAOIs.map((aoi) => (
+                  <MenuItem value='' disabled>
+                    <Box
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                    >
+                      {areAOIsLoading ? (
+                        <>
+                          <CircularProgress size={12} />
+                          <Typography
+                            variant='body2'
+                            color='text.secondary'
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            Loading areas...
+                          </Typography>
+                        </>
+                      ) : aoiLoadError ? (
+                        <>
+                          <WarningIcon fontSize='small' color='error' />
+                          <Typography
+                            variant='body2'
+                            color='error'
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            Load failed
+                          </Typography>
+                        </>
+                      ) : (
+                        <>
+                          <LocationIcon fontSize='small' color='action' />
+                          <Typography
+                            variant='body2'
+                            color='text.secondary'
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            Choose preset area
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
+                  </MenuItem>
+                  
+                  {/* Only show state options if loaded successfully */}
+                  {areAOIsLoaded &&
+                    !areAOIsLoading &&
+                    !aoiLoadError &&
+                    state.predefinedAOIs.map((aoi) => (
                       <MenuItem key={aoi.id} value={aoi.id}>
                         <Typography
                           variant='body2'
@@ -352,8 +399,26 @@ export function AOIControls({
                         </Typography>
                       </MenuItem>
                     ))}
-                  </Select>
-                </FormControl>
+                </Select>
+              </FormControl>
+
+              {/* Retry button for failed AOI loading */}
+              {aoiLoadError && onRetryLoadAOIs && (
+                <Tooltip title='Retry loading preset areas'>
+                  <Button
+                    variant='text'
+                    size='small'
+                    onClick={handleRetryLoadAOIs}
+                    disabled={areAOIsLoading}
+                    sx={{
+                      minWidth: 'auto',
+                      px: 1,
+                      py: 0.5,
+                    }}
+                  >
+                    <RefreshIcon fontSize='small' />
+                  </Button>
+                </Tooltip>
               )}
 
               {state.selectedAOI && (
@@ -373,6 +438,46 @@ export function AOIControls({
               )}
             </Box>
 
+            {/* AOI Loading Error Alert */}
+            {aoiLoadError && (
+              <Alert
+                severity='warning'
+                sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}
+                action={
+                  onRetryLoadAOIs && (
+                    <Button
+                      color='inherit'
+                      size='small'
+                      onClick={handleRetryLoadAOIs}
+                      disabled={areAOIsLoading}
+                    >
+                      Retry
+                    </Button>
+                  )
+                }
+              >
+                <AlertTitle sx={{ fontSize: '0.8rem', mb: 0.5 }}>
+                  Failed to load preset areas
+                </AlertTitle>
+                {aoiLoadError}
+              </Alert>
+            )}
+
+            {/* AOI Loading Progress */}
+            {areAOIsLoading && (
+              <Alert
+                severity='info'
+                sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={14} />
+                  <Typography variant='body2' sx={{ fontSize: '0.75rem' }}>
+                    Loading US states...
+                  </Typography>
+                </Box>
+              </Alert>
+            )}
+
             {state.isDrawing && (
               <Alert
                 severity='info'
@@ -390,6 +495,17 @@ export function AOIControls({
                 variant='outlined'
                 sx={{ fontSize: '0.7rem', height: 20 }}
               />
+            )}
+
+            {/* Show state count when loaded */}
+            {areAOIsLoaded && !areAOIsLoading && !aoiLoadError && (
+              <Typography
+                variant='caption'
+                color='text.secondary'
+                sx={{ fontSize: '0.65rem', display: 'block', mt: 0.5 }}
+              >
+                {state.predefinedAOIs.length} preset areas available
+              </Typography>
             )}
           </Box>
 

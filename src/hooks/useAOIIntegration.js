@@ -1,5 +1,5 @@
-// hooks/useAOIIntegration.js - Fixed to pass activeDate and timeWindow
-import { useCallback, useEffect, useMemo } from 'react';
+// hooks/useAOIIntegration.js - Updated to handle async state loading
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAOI } from '../context/aoiContext';
 import { analysisService } from '../services/analysisService';
 import {
@@ -10,14 +10,48 @@ import {
 export function useAOIIntegration(layerDisplayList = [], options = {}) {
   const { activeDate, activeLayer } = options;
   const { state, actions } = useAOI();
+  
+  // Add loading state for predefined AOIs
+  const [aoiLoadingState, setAoiLoadingState] = useState({
+    loading: true,
+    error: null,
+    loaded: false
+  });
 
-  // Memoize predefined AOIs to prevent recreation
-  const predefinedAOIs = useMemo(() => getDefaultPredefinedAOIs(), []);
-
-  // Initialize predefined AOIs ONLY ONCE
+  // Initialize and load predefined AOIs
   useEffect(() => {
-    actions.setPredefinedAOIs(predefinedAOIs);
-  }, []); // Remove actions dependency - only run once
+    let mounted = true;
+    
+    const loadPredefinedAOIs = async () => {
+      setAoiLoadingState({ loading: true, error: null, loaded: false });
+      
+      try {
+        console.log('Loading predefined AOIs...');
+        const predefinedAOIs = await getDefaultPredefinedAOIs();
+        
+        if (mounted) {
+          console.log(`Loaded ${predefinedAOIs.length} predefined AOIs`);
+          actions.setPredefinedAOIs(predefinedAOIs);
+          setAoiLoadingState({ loading: false, error: null, loaded: true });
+        }
+      } catch (error) {
+        console.error('Failed to load predefined AOIs:', error);
+        if (mounted) {
+          setAoiLoadingState({ 
+            loading: false, 
+            error: error.message || 'Failed to load predefined areas',
+            loaded: false
+          });
+        }
+      }
+    };
+
+    loadPredefinedAOIs();
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty dependency array - only run once
 
   // Memoize temporal groups to prevent unnecessary recalculation
   const temporalGroups = useMemo(() => {
@@ -27,7 +61,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
   // Update temporal groups when they actually change
   useEffect(() => {
     actions.setTemporalGroups(temporalGroups);
-  }, [temporalGroups]); // Remove actions dependency
+  }, [temporalGroups, actions]);
 
   // Start drawing AOI
   const startDrawing = useCallback(() => {
@@ -36,7 +70,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
       status: 'idle',
       message: 'Draw a polygon on the map to select your area of interest',
     });
-  }, []); // Remove actions dependency
+  }, [actions]);
 
   // Handle AOI drawing complete
   const onDrawComplete = useCallback((feature) => {
@@ -46,7 +80,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
       status: 'idle',
       message: 'Area selected. Choose temporal resolution and run analysis.',
     });
-  }, []); // Remove actions dependency
+  }, [actions]);
 
   // Handle AOI drawing cancel
   const onDrawCancel = useCallback(() => {
@@ -62,14 +96,14 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
         message: 'Area selected. Choose temporal resolution and run analysis.',
       });
     }
-  }, [state.selectedAOI]); // Only depend on selectedAOI
+  }, [state.selectedAOI, actions]);
 
   // Clear AOI
   const clearAOI = useCallback(() => {
     actions.setAOI(null);
     actions.setDrawing(false); // Also stop drawing
     actions.clearAnalysis();
-  }, []); // Remove actions dependency
+  }, [actions]);
 
   // Run analysis
   const runAnalysis = useCallback(async () => {
@@ -149,8 +183,9 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     state.temporalGroups, 
     state.isDrawing,
     activeDate,
-    activeLayer
-  ]); // Add activeDate and activeLayer to dependencies
+    activeLayer,
+    actions
+  ]);
 
   // Clear results but keep AOI
   const clearResults = useCallback(() => {
@@ -161,11 +196,30 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
         ? 'Area selected. Choose temporal resolution and run analysis.'
         : 'Select an area to start analysis',
     });
-  }, [state.selectedAOI]); // Remove actions dependency
+  }, [state.selectedAOI, actions]);
+
+  // Retry loading AOIs if failed
+  const retryLoadAOIs = useCallback(async () => {
+    setAoiLoadingState({ loading: true, error: null, loaded: false });
+    
+    try {
+      const predefinedAOIs = await getDefaultPredefinedAOIs();
+      actions.setPredefinedAOIs(predefinedAOIs);
+      setAoiLoadingState({ loading: false, error: null, loaded: true });
+    } catch (error) {
+      console.error('Retry failed to load predefined AOIs:', error);
+      setAoiLoadingState({ 
+        loading: false, 
+        error: error.message || 'Failed to load predefined areas',
+        loaded: false
+      });
+    }
+  }, [actions]);
 
   return {
     // State
     aoiState: state,
+    aoiLoadingState, // New loading state for predefined AOIs
 
     // Actions
     startDrawing,
@@ -174,6 +228,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     onDrawComplete,
     onDrawCancel,
     clearResults,
+    retryLoadAOIs, // New retry function
 
     // Computed
     canRunAnalysis: Boolean(
@@ -187,5 +242,10 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     isAnalyzing: state.analysisState.status === 'analyzing',
     hasResults: Boolean(state.analysisResults),
     isDrawing: state.isDrawing,
+    
+    // New computed properties for AOI loading state
+    areAOIsLoading: aoiLoadingState.loading,
+    aoiLoadError: aoiLoadingState.error,
+    areAOIsLoaded: aoiLoadingState.loaded,
   };
 }
