@@ -44,7 +44,7 @@ import {
   getAnimationSpeed,
 } from '../../utils/animationUtils';
 
-const TITLE = 'RSIG Dashboard';
+const TITLE = 'AQ Dashboard';
 const DESCRIPTION = '';
 
 // Collapsible Section Component
