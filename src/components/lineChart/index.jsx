@@ -1,8 +1,8 @@
-// Updated LineChart component - backward compatible with smart axis detection
+// Updated LineChart component - backward compatible with smart axis detection and dynamic axis titles
 import { useEffect } from 'react';
 import { useChart } from '../../context/chartContext';
 
-export const LineChart = ({ datasets = [] }) => {
+export const LineChart = ({ datasets = [], axisTitle = 'Date' }) => {
   const { chart } = useChart();
   const lineColors = ['#ff6384', '#36a2eb', '#cc65fe', '#ffce56'];
 
@@ -41,7 +41,7 @@ export const LineChart = ({ datasets = [] }) => {
         display: true,
         title: {
           display: true,
-          text: 'Date',
+          text: axisTitle, // Use dynamic axis title instead of hardcoded 'Date'
         },
       },
       yLeft: {
@@ -78,7 +78,7 @@ export const LineChart = ({ datasets = [] }) => {
     chart.options.interaction.intersect = false;
 
     chart.update();
-  }, [chart, datasets]);
+  }, [chart, datasets, axisTitle]); // Added axisTitle to dependencies
 
   return null;
 };

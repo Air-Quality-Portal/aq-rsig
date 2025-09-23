@@ -74,6 +74,10 @@ export function AOIControls({
   aoiLoadError = null,
   areAOIsLoaded = false,
   onRetryLoadAOIs = null,
+  // New props for analysis-specific dates/layers
+  analysisActiveDate = null,
+  analysisActiveLayer = null,
+  analysisTimeRange = null,
 }) {
   const { state, actions } = useAOI();
   const [showPresets, setShowPresets] = useState(false);
@@ -206,6 +210,10 @@ export function AOIControls({
       year: 'numeric',
     });
   };
+
+  // Use analysis dates instead of animation dates
+  const displayDate = analysisActiveDate || activeDate;
+  const displayLayer = analysisActiveLayer || activeLayer;
 
   if (!hasLayers) {
     return (
@@ -586,24 +594,8 @@ export function AOIControls({
                 )}
               </Box>
 
-              {state.selectedTemporalGroup && (
-                <Typography
-                  variant='caption'
-                  color='text.secondary'
-                  sx={{ fontSize: '0.7rem' }}
-                >
-                  {state.temporalGroups
-                    .find((g) => g.id === state.selectedTemporalGroup)
-                    ?.layers.map((l) => l.name)
-                    .slice(0, 2)
-                    .join(', ')}
-                  {state.temporalGroups.find(
-                    (g) => g.id === state.selectedTemporalGroup
-                  )?.layers.length > 2 && '...'}
-                </Typography>
-              )}
-
-              {activeDate && state.selectedTimeWindow && (
+              {/* Analysis Dataset & Time Range - Clean single display */}
+              {state.selectedTemporalGroup && state.selectedTimeWindow && (
                 <Box
                   sx={{
                     mt: 1,
@@ -616,20 +608,21 @@ export function AOIControls({
                 >
                   <Typography
                     variant='caption'
-                    color='primary.600'
-                    sx={{ fontSize: '0.7rem', fontWeight: 500 }}
+                    color='primary.700'
+                    sx={{ fontSize: '0.75rem', fontWeight: 600, display: 'block' }}
                   >
-                    From {formatActiveDate(activeDate)}
+                    {displayLayer?.name || 'Dataset'}
                   </Typography>
-                  {activeLayer && (
-                    <Typography
-                      variant='caption'
-                      color='text.secondary'
-                      sx={{ display: 'block', fontSize: '0.65rem' }}
-                    >
-                      {activeLayer.name}
-                    </Typography>
-                  )}
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                    sx={{ fontSize: '0.65rem' }}
+                  >
+                    {state.selectedTimeWindow} from {formatActiveDate(displayDate)}
+                    {analysisTimeRange && (
+                      <> • Available: {formatActiveDate(analysisTimeRange.start)} - {formatActiveDate(analysisTimeRange.end)}</>
+                    )}
+                  </Typography>
                 </Box>
               )}
             </Box>

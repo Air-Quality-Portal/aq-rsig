@@ -1,10 +1,11 @@
-// hooks/useAOIIntegration.js - Updated to handle async state loading
+// hooks/useAOIIntegration.js - Fixed to use temporal group dates instead of animation dates
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAOI } from '../context/aoiContext';
 import { analysisService } from '../services/analysisService';
 import {
   groupLayersByTemporalResolution,
   getDefaultPredefinedAOIs,
+  getAnalysisTimeRange,
 } from '../utils/temporalGrouping';
 
 export function useAOIIntegration(layerDisplayList = [], options = {}) {
@@ -63,6 +64,37 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     actions.setTemporalGroups(temporalGroups);
   }, [temporalGroups, actions]);
 
+  // Get the selected temporal group details
+  const selectedTemporalGroup = useMemo(() => {
+    return state.temporalGroups.find(g => g.id === state.selectedTemporalGroup);
+  }, [state.temporalGroups, state.selectedTemporalGroup]);
+
+  // Get analysis date range from selected temporal group
+  const analysisTimeRange = useMemo(() => {
+    if (!selectedTemporalGroup) return null;
+    return getAnalysisTimeRange(selectedTemporalGroup);
+  }, [selectedTemporalGroup]);
+
+  // Get the appropriate active date for analysis (from selected temporal group, not animation)
+  const analysisActiveDate = useMemo(() => {
+    if (!selectedTemporalGroup || !analysisTimeRange) {
+      return activeDate; // Fallback to animation active date
+    }
+
+    // Use the start of the temporal group's time range
+    return analysisTimeRange.start.toISOString();
+  }, [selectedTemporalGroup, analysisTimeRange, activeDate]);
+
+  // Get the appropriate layer for analysis (first layer from selected temporal group)
+  const analysisActiveLayer = useMemo(() => {
+    if (!selectedTemporalGroup || !selectedTemporalGroup.layers?.length) {
+      return activeLayer; // Fallback to animation layer
+    }
+
+    // Use the first layer from the selected temporal group
+    return selectedTemporalGroup.layers[0];
+  }, [selectedTemporalGroup, activeLayer]);
+
   // Start drawing AOI
   const startDrawing = useCallback(() => {
     actions.setDrawing(true);
@@ -112,10 +144,10 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     }
 
     // Check for required parameters
-    if (!activeDate) {
+    if (!analysisActiveDate) {
       actions.setAnalysisState({
         status: 'error',
-        message: 'Active date is required. Please select a time frame on the map.',
+        message: 'Analysis date is required. Please select a temporal group with valid data.',
       });
       return;
     }
@@ -157,9 +189,9 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
           });
         },
         {
-          activeDate: activeDate,
+          activeDate: analysisActiveDate, // Use temporal group date, not animation date
           timeWindow: state.selectedTimeWindow,
-          layerName: activeLayer?.name || 'Unknown Layer',
+          layerName: analysisActiveLayer?.name || temporalGroup.layers[0]?.name || 'Unknown Layer',
         }
       );
 
@@ -182,8 +214,8 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     state.selectedTimeWindow,
     state.temporalGroups, 
     state.isDrawing,
-    activeDate,
-    activeLayer,
+    analysisActiveDate,      // Use temporal group date
+    analysisActiveLayer,     // Use temporal group layer
     actions
   ]);
 
@@ -235,7 +267,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
       state.selectedAOI &&
         state.selectedTemporalGroup &&
         state.selectedTimeWindow &&
-        activeDate &&
+        analysisActiveDate &&      // Use temporal group date
         state.temporalGroups.length > 0 &&
         !state.isDrawing // Don't allow analysis while drawing
     ),
@@ -247,5 +279,10 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     areAOIsLoading: aoiLoadingState.loading,
     aoiLoadError: aoiLoadingState.error,
     areAOIsLoaded: aoiLoadingState.loaded,
+
+    // Expose analysis-specific dates/layers (for display purposes)
+    analysisActiveDate,
+    analysisActiveLayer,
+    analysisTimeRange,
   };
 }

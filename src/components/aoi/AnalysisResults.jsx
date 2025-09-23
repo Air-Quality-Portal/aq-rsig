@@ -1,4 +1,4 @@
-// components/aoi/AnalysisResults.jsx - Updated to use existing LineChart
+// components/aoi/AnalysisResults.jsx - Fixed to show hourly time labels
 import React, { useMemo } from 'react';
 import { Box, Paper, Typography, IconButton, Tooltip } from '@mui/material';
 import {
@@ -12,6 +12,73 @@ import { LineChart } from '../../components/lineChart';
 export function AnalysisResults({ onClose, position = 'bottom' }) {
   const { state } = useAOI();
   const results = state.analysisResults;
+
+  // Helper function to detect if data is hourly and format labels appropriately
+  const formatTimeLabels = (timePoints) => {
+    if (timePoints.length < 2) {
+      // Single point - show full date and time
+      return timePoints.map((point) => {
+        const date = new Date(point.datetime);
+        return date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+      });
+    }
+
+    // Check if all points are on the same day
+    const dates = timePoints.map(point => new Date(point.datetime));
+    const firstDate = dates[0];
+    const allSameDay = dates.every(date => 
+      date.getFullYear() === firstDate.getFullYear() &&
+      date.getMonth() === firstDate.getMonth() &&
+      date.getDate() === firstDate.getDate()
+    );
+
+    // Check time intervals to detect hourly data
+    const timeIntervals = [];
+    for (let i = 1; i < dates.length; i++) {
+      const diff = dates[i] - dates[i-1];
+      timeIntervals.push(diff);
+    }
+    
+    const averageInterval = timeIntervals.reduce((a, b) => a + b, 0) / timeIntervals.length;
+    const isHourly = Math.abs(averageInterval - (60 * 60 * 1000)) < (30 * 60 * 1000); // Within 30 minutes of 1 hour
+
+    if (allSameDay && isHourly) {
+      // Same day + hourly data: show only time
+      return timePoints.map((point) => {
+        const date = new Date(point.datetime);
+        return date.toLocaleTimeString('en-US', {
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+      });
+    } else if (isHourly) {
+      // Multiple days + hourly data: show date and time
+      return timePoints.map((point) => {
+        const date = new Date(point.datetime);
+        return date.toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        });
+      });
+    } else {
+      // Daily or other intervals: show just date
+      return timePoints.map((point) => {
+        const date = new Date(point.datetime);
+        return date.toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+        });
+      });
+    }
+  };
 
   // Transform AOI analysis data to match the existing LineChart component format
   const chartDatasets = useMemo(() => {
@@ -38,15 +105,8 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
               point.min !== null && point.max !== null && point.mean !== null
           );
 
-        // Create labels array (shared across all datasets)
-        const labels = timePoints.map((point) => {
-          const date = new Date(point.datetime);
-          return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-          });
-        });
+        // Create labels array with smart time formatting
+        const labels = formatTimeLabels(timePoints);
 
         const units = layerStats.layerName || 'Value';
 
@@ -80,15 +140,13 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
         (key) => key !== 'datetime'
       );
 
-      // Create labels from datetime
-      const labels = results.chartData.map((point) => {
-        const date = new Date(point.datetime);
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-        });
-      });
+      // Create time points for formatting
+      const timePoints = results.chartData.map((point) => ({
+        datetime: point.datetime
+      }));
+
+      // Create labels from datetime with smart formatting
+      const labels = formatTimeLabels(timePoints);
 
       // Return all available layer keys as separate datasets
       return layerKeys.map((layerKey) => ({
@@ -101,6 +159,30 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
 
     return [];
   }, [results]);
+
+  // Detect the time format for axis title
+  const axisTitle = useMemo(() => {
+    if (!results || !chartDatasets.length) return 'Time';
+    
+    const firstDataset = chartDatasets[0];
+    if (!firstDataset.labels || firstDataset.labels.length < 2) return 'Time';
+
+    // Check if labels contain time information
+    const hasTime = firstDataset.labels.some(label => 
+      label.includes(':') || label.includes('AM') || label.includes('PM')
+    );
+    
+    const hasDate = firstDataset.labels.some(label => 
+      label.includes('Jan') || label.includes('Feb') || label.includes('Mar') || 
+      label.includes('Apr') || label.includes('May') || label.includes('Jun') ||
+      label.includes('Jul') || label.includes('Aug') || label.includes('Sep') ||
+      label.includes('Oct') || label.includes('Nov') || label.includes('Dec')
+    );
+
+    if (hasDate && hasTime) return 'Date/Time';
+    if (hasTime) return 'Time';
+    return 'Date';
+  }, [chartDatasets, results]);
 
   const handleDownload = () => {
     if (!results) return;
@@ -152,13 +234,14 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
           boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
         }}
       >
-        {/* Header - matches dashboard station chart header */}
+        {/* Header - shows dataset and analysis info */}
         <Box
           sx={{
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
             borderBottom: '1px solid #eee',
+            p: 2,
           }}
         >
           <Box>
@@ -170,15 +253,14 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
                 fontWeight: '600',
               }}
             >
-              Area Analysis Results
+              {results.layerName || 'Area Analysis Results'}
             </Typography>
             <Typography variant='body2' color='text.secondary'>
-              Statistical trends over time •{' '}
-              {chartDatasets.reduce(
-                (acc, dataset) => acc + dataset.data.length,
-                0
-              )}{' '}
-              data points
+              {results.timeWindow} from {results.activeDate ? new Date(results.activeDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric', 
+                year: 'numeric'
+              }) : 'Unknown'} • {chartDatasets.reduce((acc, dataset) => acc + dataset.data.length, 0)} data points
             </Typography>
           </Box>
 
@@ -206,7 +288,10 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
         <Box sx={{ flex: 1, padding: '0px' }}>
           {chartDatasets && chartDatasets.length > 0 ? (
             <ChartProvider>
-              <LineChart datasets={chartDatasets} />
+              <LineChart 
+                datasets={chartDatasets} 
+                axisTitle={axisTitle}
+              />
             </ChartProvider>
           ) : (
             <Box
