@@ -193,21 +193,21 @@ export function AOIControls({
 
   const formatActiveDate = (dateString) => {
     if (!dateString) return '';
-    let date;
-    if (
-      typeof dateString === 'string' &&
-      !dateString.includes('Z') &&
-      !dateString.includes('+') &&
-      !dateString.includes('-')
-    ) {
-      date = new Date(dateString + 'Z');
-    } else {
-      date = new Date(dateString);
+
+    // Handle different date formats more carefully
+    const date = new Date(dateString);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date:', dateString);
+      return dateString;
     }
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC', // Force UTC to avoid timezone shifts
     });
   };
 
@@ -392,7 +392,7 @@ export function AOIControls({
                       )}
                     </Box>
                   </MenuItem>
-                  
+
                   {/* Only show state options if loaded successfully */}
                   {areAOIsLoaded &&
                     !areAOIsLoading &&
@@ -609,7 +609,11 @@ export function AOIControls({
                   <Typography
                     variant='caption'
                     color='primary.700'
-                    sx={{ fontSize: '0.75rem', fontWeight: 600, display: 'block' }}
+                    sx={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'block',
+                    }}
                   >
                     {displayLayer?.name || 'Dataset'}
                   </Typography>
@@ -618,9 +622,16 @@ export function AOIControls({
                     color='text.secondary'
                     sx={{ fontSize: '0.65rem' }}
                   >
-                    {state.selectedTimeWindow} from {formatActiveDate(displayDate)}
+                    {state.selectedTimeWindow} from{' '}
+                    {formatActiveDate(displayDate)}
                     {analysisTimeRange && (
-                      <> • Available: {formatActiveDate(analysisTimeRange.start)} - {formatActiveDate(analysisTimeRange.end)}</>
+                      <>
+                        {' '}
+                        • Available: {formatActiveDate(
+                          analysisTimeRange.start
+                        )}{' '}
+                        - {formatActiveDate(analysisTimeRange.end)}
+                      </>
                     )}
                   </Typography>
                 </Box>

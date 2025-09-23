@@ -1,4 +1,4 @@
-// hooks/useAOIIntegration.js - Fixed to use temporal group dates instead of animation dates
+// hooks/useAOIIntegration.js - Fixed to use animation active date as analysis start date
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAOI } from '../context/aoiContext';
 import { analysisService } from '../services/analysisService';
@@ -75,15 +75,21 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     return getAnalysisTimeRange(selectedTemporalGroup);
   }, [selectedTemporalGroup]);
 
-  // Get the appropriate active date for analysis (from selected temporal group, not animation)
+  // Get the appropriate active date for analysis - FIXED: Prioritize animation active date
   const analysisActiveDate = useMemo(() => {
-    if (!selectedTemporalGroup || !analysisTimeRange) {
-      return activeDate; // Fallback to animation active date
+    // Priority 1: Use the current active date from animation if available
+    if (activeDate) {
+      return activeDate;
     }
 
-    // Use the start of the temporal group's time range
-    return analysisTimeRange.start.toISOString();
-  }, [selectedTemporalGroup, analysisTimeRange, activeDate]);
+    // Priority 2: Use the start of the temporal group's time range as fallback
+    if (selectedTemporalGroup && analysisTimeRange) {
+      return analysisTimeRange.start.toISOString();
+    }
+
+    // Priority 3: No date available
+    return null;
+  }, [activeDate, selectedTemporalGroup, analysisTimeRange]);
 
   // Get the appropriate layer for analysis (first layer from selected temporal group)
   const analysisActiveLayer = useMemo(() => {
@@ -137,7 +143,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     actions.clearAnalysis();
   }, [actions]);
 
-  // Run analysis
+  // Run analysis - FIXED: Now uses the current active date from animation
   const runAnalysis = useCallback(async () => {
     if (!state.selectedAOI || !state.selectedTemporalGroup || state.isDrawing) {
       return;
@@ -171,6 +177,13 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
       return;
     }
 
+    // DEBUG: Log the active date being passed to analysis
+    console.log('=== AOI INTEGRATION DEBUG ===');
+    console.log('analysisActiveDate:', analysisActiveDate);
+    console.log('activeDate from props:', activeDate);
+    console.log('selectedTimeWindow:', state.selectedTimeWindow);
+    console.log('temporalGroup resolution:', temporalGroup.resolution);
+
     actions.setAnalysisState({
       status: 'analyzing',
       message: 'Starting analysis...',
@@ -189,7 +202,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
           });
         },
         {
-          activeDate: analysisActiveDate, // Use temporal group date, not animation date
+          activeDate: analysisActiveDate, // Now uses current animation date as start point
           timeWindow: state.selectedTimeWindow,
           layerName: analysisActiveLayer?.name || temporalGroup.layers[0]?.name || 'Unknown Layer',
         }
@@ -214,8 +227,9 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     state.selectedTimeWindow,
     state.temporalGroups, 
     state.isDrawing,
-    analysisActiveDate,      // Use temporal group date
+    analysisActiveDate,      // Now properly uses animation active date
     analysisActiveLayer,     // Use temporal group layer
+    activeDate,              // Add activeDate as dependency for debugging
     actions
   ]);
 
@@ -267,7 +281,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
       state.selectedAOI &&
         state.selectedTemporalGroup &&
         state.selectedTimeWindow &&
-        analysisActiveDate &&      // Use temporal group date
+        analysisActiveDate &&      // Now properly validates animation date
         state.temporalGroups.length > 0 &&
         !state.isDrawing // Don't allow analysis while drawing
     ),

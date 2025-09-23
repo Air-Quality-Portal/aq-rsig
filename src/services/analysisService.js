@@ -86,6 +86,7 @@ export class AnalysisService {
 
     // Calculate time range from active date and window
     const { start, end } = calculateTimeRange(activeDate, timeWindow);
+    console.log(`Calculated time range: ${start.toISOString()} to ${end.toISOString()}`);
     const { value, unit } = parseTimeWindow(timeWindow);
 
     console.log(`Analysis time range: ${start.toISOString()} to ${end.toISOString()}`);
@@ -175,9 +176,12 @@ export class AnalysisService {
 
     // Get all available STAC items for the time range (no limit)
     const items = await this.fetchSTACItems(collectionId, start, end);
-    console.log(`Found ${items.length} items for ${collectionId} in time window`);
+    const filteredItems = items.filter(item => {
+  const itemDate = new Date(item.properties.datetime || item.properties.start_datetime);
+  return itemDate >= start && itemDate <= end;
+});
 
-    if (items.length === 0) {
+    if (filteredItems.length === 0) {
       throw new Error(
         `No data items found for collection ${collectionId} in the specified time window`
       );
@@ -211,14 +215,14 @@ export class AnalysisService {
     };
 
     // Process ALL items in the time window (not limited to 20)
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const itemProgress = (i / items.length) * 100;
+    for (let i = 0; i < filteredItems.length; i++) {
+      const item = filteredItems[i];
+      const itemProgress = (i / filteredItems.length) * 100;
 
       if (onProgress) {
         onProgress(
           itemProgress,
-          `Processing item ${i + 1}/${items.length}: ${item.id}`
+          `Processing item ${i + 1}/${filteredItems.length}: ${item.id}`
         );
       }
 

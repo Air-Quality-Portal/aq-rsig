@@ -423,15 +423,22 @@ export function DeckGlLayerManager({
         // Define CONUS bounds
         const CONUS_BOUNDS = [-125.0, 24.0, -66.5, 49.0];
 
+        // 1. DEFINE effectiveBounds FIRST using spatialSubset OR the CONUS fallback
+        const effectiveBounds = spatialSubset || {
+          west: CONUS_BOUNDS[0],
+          south: CONUS_BOUNDS[1],
+          east: CONUS_BOUNDS[2],
+          north: CONUS_BOUNDS[3],
+        };
+        
         const varValues = { lev: [250, 550, 850, 1000] };
+
+        // 2. USE effectiveBounds to create the bbox, ensuring it's ALWAYS included
         const netcdfParams = {
           ...rest,
           colormap: datasetMetadata.colormap || 'reds',
           rescale: formatRescaleValues(datasetMetadata.rescale_values),
-          ...(spatialSubset && {
-            spatialBounds: spatialSubset,
-            bbox: `${spatialSubset.west},${spatialSubset.south},${spatialSubset.east},${spatialSubset.north}`,
-          }),
+          bbox: `${effectiveBounds.west},${effectiveBounds.south},${effectiveBounds.east},${effectiveBounds.north}`,
         };
 
         const tileUrls = buildNetCDF2DTileUrl(
@@ -439,19 +446,15 @@ export function DeckGlLayerManager({
           datetime,
           variable,
           varValues,
-          netcdfParams
+          netcdfParams // This object now correctly contains the bbox
         );
+
         const levValues = varValues?.lev || [];
         const datasetIndex = layerOpacityList.findIndex(
           (l) => l.id === datasetId
         );
         const baseZOffset = datasetIndex * 10;
-        const effectiveBounds = spatialSubset || {
-          west: CONUS_BOUNDS[0],
-          south: CONUS_BOUNDS[1],
-          east: CONUS_BOUNDS[2],
-          north: CONUS_BOUNDS[3],
-        };
+        
         tileUrls.forEach((tileUrl, index) => {
           const lev = levValues[index];
           if (lev === undefined) return;
@@ -480,12 +483,12 @@ export function DeckGlLayerManager({
                 bbox: { west, south, east, north },
               } = props.tile;
 
-              // Simple bounds check - hide tiles completely outside bounds
+              // This on-screen clipping now works in tandem with the server clipping
               if (
                 east < effectiveBounds.west ||
                 west > effectiveBounds.east ||
                 north < effectiveBounds.south ||
-                south > effectiveBounds.south
+                south > effectiveBounds.north
               ) {
                 return null;
               }

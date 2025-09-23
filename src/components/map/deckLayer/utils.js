@@ -160,19 +160,20 @@ export const buildRasterTileUrl = (
   }
 };
 
+// In your utils.js file
+
 export const buildNetCDF2DTileUrl = (
   conceptId,
   datetime,
   variable,
   varValues,
-  layerData,
+  layerData, // This object contains your bbox
   options = {}
 ) => {
   if (!varValues || Object.keys(varValues).length === 0) {
     return [];
   }
-  // const baseUrl =
-  //   'https://v4jec6i5c0.execute-api.us-west-2.amazonaws.com/tiles/WebMercatorQuad/{z}/{x}/{y}';
+
   const baseUrl =
     'https://staging.openveda.cloud/api/titiler-cmr/tiles/WebMercatorQuad/{z}/{x}/{y}';
 
@@ -190,6 +191,11 @@ export const buildNetCDF2DTileUrl = (
   for (const [dimensionKey, dimensionValues] of Object.entries(varValues)) {
     for (const value of dimensionValues) {
       const params = new URLSearchParams(baseParams);
+
+      // ✅ ADD THIS BLOCK TO INCLUDE THE BBOX
+      if (layerData && layerData.bbox) {
+        params.append('bbox', layerData.bbox);
+      }
 
       // Add sel=dimension=value (e.g., sel=lev=500)
       params.append('sel', `${dimensionKey}=${value}`);

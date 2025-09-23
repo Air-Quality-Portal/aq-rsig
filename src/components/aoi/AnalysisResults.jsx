@@ -13,28 +13,66 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
   const { state } = useAOI();
   const results = state.analysisResults;
 
+  // Helper function to format active date with timezone handling
+  const formatActiveDate = (dateString) => {
+    if (!dateString) return 'Unknown';
+    
+    let date;
+    if (
+      typeof dateString === 'string' &&
+      !dateString.includes('Z') &&
+      !dateString.includes('+') &&
+      !dateString.includes('-')
+    ) {
+      date = new Date(dateString + 'Z');
+    } else {
+      date = new Date(dateString);
+    }
+    
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC' // Force UTC to prevent timezone shifts
+    });
+  };
+
+  // Helper function to create date with timezone handling
+  const createSafeDate = (dateString) => {
+    if (
+      typeof dateString === 'string' &&
+      !dateString.includes('Z') &&
+      !dateString.includes('+') &&
+      !dateString.includes('-')
+    ) {
+      return new Date(dateString + 'Z');
+    }
+    return new Date(dateString);
+  };
+
   // Helper function to detect if data is hourly and format labels appropriately
   const formatTimeLabels = (timePoints) => {
     if (timePoints.length < 2) {
       // Single point - show full date and time
       return timePoints.map((point) => {
-        const date = new Date(point.datetime);
+        const date = createSafeDate(point.datetime);
         return date.toLocaleString('en-US', {
           month: 'short',
           day: 'numeric',
           hour: 'numeric',
           minute: '2-digit',
+          timeZone: 'UTC'
         });
       });
     }
 
     // Check if all points are on the same day
-    const dates = timePoints.map(point => new Date(point.datetime));
+    const dates = timePoints.map(point => createSafeDate(point.datetime));
     const firstDate = dates[0];
     const allSameDay = dates.every(date => 
-      date.getFullYear() === firstDate.getFullYear() &&
-      date.getMonth() === firstDate.getMonth() &&
-      date.getDate() === firstDate.getDate()
+      date.getUTCFullYear() === firstDate.getUTCFullYear() &&
+      date.getUTCMonth() === firstDate.getUTCMonth() &&
+      date.getUTCDate() === firstDate.getUTCDate()
     );
 
     // Check time intervals to detect hourly data
@@ -50,31 +88,34 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
     if (allSameDay && isHourly) {
       // Same day + hourly data: show only time
       return timePoints.map((point) => {
-        const date = new Date(point.datetime);
+        const date = createSafeDate(point.datetime);
         return date.toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
+          timeZone: 'UTC'
         });
       });
     } else if (isHourly) {
       // Multiple days + hourly data: show date and time
       return timePoints.map((point) => {
-        const date = new Date(point.datetime);
+        const date = createSafeDate(point.datetime);
         return date.toLocaleString('en-US', {
           month: 'short',
           day: 'numeric',
           hour: 'numeric',
           minute: '2-digit',
+          timeZone: 'UTC'
         });
       });
     } else {
       // Daily or other intervals: show just date
       return timePoints.map((point) => {
-        const date = new Date(point.datetime);
+        const date = createSafeDate(point.datetime);
         return date.toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
+          timeZone: 'UTC'
         });
       });
     }
@@ -256,11 +297,7 @@ export function AnalysisResults({ onClose, position = 'bottom' }) {
               {results.layerName || 'Area Analysis Results'}
             </Typography>
             <Typography variant='body2' color='text.secondary'>
-              {results.timeWindow} from {results.activeDate ? new Date(results.activeDate).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric', 
-                year: 'numeric'
-              }) : 'Unknown'} • {chartDatasets.reduce((acc, dataset) => acc + dataset.data.length, 0)} data points
+              {results.timeWindow} from {formatActiveDate(results.activeDate)} • {chartDatasets.reduce((acc, dataset) => acc + dataset.data.length, 0)} data points
             </Typography>
           </Box>
 
