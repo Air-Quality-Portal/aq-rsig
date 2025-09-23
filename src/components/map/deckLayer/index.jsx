@@ -407,7 +407,6 @@ export function DeckGlLayerManager({
 
         const CONUS_BOUNDS = [-125.0, 24.0, -66.5, 49.0];
 
-        // MODIFIED: effectiveBounds no longer uses spatialSubset for clipping
         const effectiveBounds = {
           west: CONUS_BOUNDS[0],
           south: CONUS_BOUNDS[1],
@@ -452,7 +451,7 @@ export function DeckGlLayerManager({
             id: `${getLayerId('netcdf-2d', datasetId)}-lev-${lev}`,
             data: tileUrl,
             minZoom: 0,
-            maxZoom: 1,
+            maxZoom: 19,
             tileSize: 256,
             visible: isLayerVisible && visible,
             pickable: true,
@@ -461,16 +460,10 @@ export function DeckGlLayerManager({
             zoom: 1,
             beforeId: 'admin-1-boundary-bg',
             renderSubLayers: (props) => {
-              const {
-                bbox: { west, south, east, north },
-              } = props.tile;
-
-              // This check now only clips to the permanent effectiveBounds (CONUS)
+              const { bbox: { west, south, east, north } } = props.tile;
               if (
-                east < effectiveBounds.west ||
-                west > effectiveBounds.east ||
-                north < effectiveBounds.south ||
-                south > effectiveBounds.north
+                east < CONUS_BOUNDS[0] || west > CONUS_BOUNDS[2] ||
+                north < CONUS_BOUNDS[1] || south > CONUS_BOUNDS[3]
               ) {
                 return null;
               }
@@ -478,7 +471,7 @@ export function DeckGlLayerManager({
               return new BitmapLayer({
                 ...props,
                 opacity: dynamicOpacity,
-                data: null,
+                data: tileUrl,
                 image: props.data,
                 bounds: [west, south, east, north],
                 modelMatrix: new Matrix4().translate([0, 0, relativeZOffset]),
