@@ -4,15 +4,19 @@ import bbox from '@turf/bbox';
 const parseTimeWindow = (timeWindow) => {
   const match = timeWindow.match(/^(\d+)([hdy])$/);
   if (!match) throw new Error('Invalid time window format');
-  
+
   const [, amount, unit] = match;
   const value = parseInt(amount);
-  
+
   switch (unit) {
-    case 'h': return { value, unit: 'hours' };
-    case 'd': return { value, unit: 'days' };
-    case 'y': return { value, unit: 'years' };
-    default: throw new Error('Invalid time window unit');
+    case 'h':
+      return { value, unit: 'hours' };
+    case 'd':
+      return { value, unit: 'days' };
+    case 'y':
+      return { value, unit: 'years' };
+    default:
+      throw new Error('Invalid time window unit');
   }
 };
 
@@ -21,7 +25,11 @@ const calculateTimeRange = (activeDate, timeWindow) => {
   let start;
   if (typeof activeDate === 'string') {
     // If no timezone info, treat as UTC
-    if (!activeDate.includes('Z') && !activeDate.includes('+') && !activeDate.includes('-')) {
+    if (
+      !activeDate.includes('Z') &&
+      !activeDate.includes('+') &&
+      !activeDate.includes('-')
+    ) {
       start = new Date(activeDate + 'Z');
     } else {
       start = new Date(activeDate);
@@ -29,10 +37,10 @@ const calculateTimeRange = (activeDate, timeWindow) => {
   } else {
     start = new Date(activeDate);
   }
-  
+
   const { value, unit } = parseTimeWindow(timeWindow);
   const end = new Date(start);
-  
+
   switch (unit) {
     case 'hours':
       end.setUTCHours(start.getUTCHours() + value); // Use UTC methods
@@ -44,7 +52,7 @@ const calculateTimeRange = (activeDate, timeWindow) => {
       end.setUTCFullYear(start.getUTCFullYear() + value); // Use UTC methods
       break;
   }
-  
+
   return { start, end };
 };
 
@@ -55,7 +63,7 @@ export class AnalysisService {
 
   async runAnalysis(aoi, temporalGroup, onProgress, options = {}) {
     const { activeDate, timeWindow, layerName } = options;
-    
+
     console.log('=== ANALYSIS SERVICE DEBUG ===');
     console.log('AOI:', aoi);
     console.log('Temporal Group:', temporalGroup);
@@ -86,14 +94,21 @@ export class AnalysisService {
 
     // Calculate time range from active date and window
     const { start, end } = calculateTimeRange(activeDate, timeWindow);
-    console.log(`Calculated time range: ${start.toISOString()} to ${end.toISOString()}`);
+    console.log(
+      `Calculated time range: ${start.toISOString()} to ${end.toISOString()}`
+    );
     const { value, unit } = parseTimeWindow(timeWindow);
 
-    console.log(`Analysis time range: ${start.toISOString()} to ${end.toISOString()}`);
+    console.log(
+      `Analysis time range: ${start.toISOString()} to ${end.toISOString()}`
+    );
     console.log(`Time window: ${value} ${unit} from active date`);
 
     if (onProgress) {
-      onProgress(10, `Analyzing ${value} ${unit} from ${start.toLocaleDateString()}...`);
+      onProgress(
+        10,
+        `Analyzing ${value} ${unit} from ${start.toLocaleDateString()}...`
+      );
     }
 
     const allStatistics = [];
@@ -105,7 +120,10 @@ export class AnalysisService {
       const progress = 20 + (i / temporalGroup.layers.length) * 70;
 
       if (onProgress) {
-        onProgress(progress, `Processing ${layer.name} (${value} ${unit} window)...`);
+        onProgress(
+          progress,
+          `Processing ${layer.name} (${value} ${unit} window)...`
+        );
       }
 
       try {
@@ -115,7 +133,8 @@ export class AnalysisService {
           start,
           end,
           (itemProgress, message) => {
-            const totalProgress = progress + (itemProgress * 0.7) / temporalGroup.layers.length;
+            const totalProgress =
+              progress + (itemProgress * 0.7) / temporalGroup.layers.length;
             if (onProgress) onProgress(totalProgress, message);
           }
         );
@@ -133,7 +152,7 @@ export class AnalysisService {
         });
       } catch (error) {
         console.error(`Failed to analyze layer ${layer.name}:`, error);
-        
+
         allStatistics.push({
           layerId: layer.id,
           layerName: layer.name,
@@ -151,9 +170,13 @@ export class AnalysisService {
       (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
     );
 
-    const totalDataPoints = allStatistics.reduce((sum, stat) => sum + stat.temporal.length, 0);
-    
-    if (onProgress) onProgress(100, `Analysis complete: ${totalDataPoints} data points`);
+    const totalDataPoints = allStatistics.reduce(
+      (sum, stat) => sum + stat.temporal.length,
+      0
+    );
+
+    if (onProgress)
+      onProgress(100, `Analysis complete: ${totalDataPoints} data points`);
 
     return {
       aoiId: this.generateAOIId(aoi),
@@ -176,10 +199,12 @@ export class AnalysisService {
 
     // Get all available STAC items for the time range (no limit)
     const items = await this.fetchSTACItems(collectionId, start, end);
-    const filteredItems = items.filter(item => {
-  const itemDate = new Date(item.properties.datetime || item.properties.start_datetime);
-  return itemDate >= start && itemDate <= end;
-});
+    const filteredItems = items.filter((item) => {
+      const itemDate = new Date(
+        item.properties.datetime || item.properties.start_datetime
+      );
+      return itemDate >= start && itemDate <= end;
+    });
 
     if (filteredItems.length === 0) {
       throw new Error(
@@ -203,7 +228,10 @@ export class AnalysisService {
       };
     }
 
-    if (!requestBody.geometry || Object.keys(requestBody.geometry).length === 0) {
+    if (
+      !requestBody.geometry ||
+      Object.keys(requestBody.geometry).length === 0
+    ) {
       throw new Error('Invalid AOI geometry - geometry is required');
     }
 
@@ -256,7 +284,10 @@ export class AnalysisService {
           });
         }
       } catch (error) {
-        console.warn(`Failed to get statistics for item ${item.id}:`, error.message);
+        console.warn(
+          `Failed to get statistics for item ${item.id}:`,
+          error.message
+        );
       }
     }
 
@@ -265,7 +296,9 @@ export class AnalysisService {
       (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
     );
 
-    console.log(`Processed statistics for ${layer.name}: ${result.temporal.length} time points`);
+    console.log(
+      `Processed statistics for ${layer.name}: ${result.temporal.length} time points`
+    );
     return result;
   }
 
@@ -317,12 +350,18 @@ export class AnalysisService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`Statistics API error: ${response.status} - ${errorText}`);
+        throw new Error(
+          `Statistics API error: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
 
-      if (data.type === 'Feature' && data.properties && data.properties.statistics) {
+      if (
+        data.type === 'Feature' &&
+        data.properties &&
+        data.properties.statistics
+      ) {
         const stats = data.properties.statistics;
         const assetKey = Object.keys(stats)[0];
         if (assetKey && stats[assetKey]) {
