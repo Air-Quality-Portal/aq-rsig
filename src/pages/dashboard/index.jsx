@@ -46,7 +46,7 @@ import {
   getAnimationSpeed,
 } from '../../utils/animationUtils';
 
-const TITLE = 'AQ Dashboard';
+const TITLE = 'AQ Visualization Dashboard';
 const DESCRIPTION = '';
 
 // Collapsible Section Component
@@ -391,9 +391,9 @@ export function DashboardContent({ loadingData }) {
     [layerDisplayList, selectedRecord?.id]
   );
 
-  const handleSpatialSubsetChange = useCallback((newSpatialSubset) => {
-    setSpatialSubset(newSpatialSubset);
-  }, []);
+  // const handleSpatialSubsetChange = useCallback((newSpatialSubset) => {
+  //   setSpatialSubset(newSpatialSubset);
+  // }, []);
 
   // Priority management for bottom components
   const hideStationChartWithPriority = useCallback(() => {
