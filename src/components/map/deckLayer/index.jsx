@@ -3,7 +3,6 @@ import { IconLayer, BitmapLayer } from '@deck.gl/layers';
 import { Tile3DLayer, TileLayer } from '@deck.gl/geo-layers';
 import { GeoJsonLayer } from '@deck.gl/layers';
 import { Matrix4 } from '@math.gl/core';
-import { MaskExtension } from '@deck.gl/extensions';
 import { useMapbox } from '../../../context/mapContext';
 import { getLayerId, buildRasterTileUrl, buildNetCDF2DTileUrl } from './utils';
 
