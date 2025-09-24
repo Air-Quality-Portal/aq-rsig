@@ -331,9 +331,6 @@ export function DeckGlLayerManager({
           nodata: '-9999',
         };
 
-        // REMOVED: AOI clipping for raster URL
-        // if (spatialSubset) { ... }
-
         const tileUrl = buildRasterTileUrl(
           collection,
           itemId,
@@ -362,9 +359,6 @@ export function DeckGlLayerManager({
             const {
               bbox: { west, south, east, north },
             } = props.tile;
-
-            // REMOVED: AOI clipping for raster rendering
-            // if (spatialSubset && !tileIntersectsBounds(...) ) { ... }
 
             return new BitmapLayer({
               ...props,
@@ -460,10 +454,14 @@ export function DeckGlLayerManager({
             zoom: 1,
             beforeId: 'admin-1-boundary-bg',
             renderSubLayers: (props) => {
-              const { bbox: { west, south, east, north } } = props.tile;
+              const {
+                bbox: { west, south, east, north },
+              } = props.tile;
               if (
-                east < CONUS_BOUNDS[0] || west > CONUS_BOUNDS[2] ||
-                north < CONUS_BOUNDS[1] || south > CONUS_BOUNDS[3]
+                east < CONUS_BOUNDS[0] ||
+                west > CONUS_BOUNDS[2] ||
+                north < CONUS_BOUNDS[1] ||
+                south > CONUS_BOUNDS[3]
               ) {
                 return null;
               }
@@ -482,17 +480,18 @@ export function DeckGlLayerManager({
         });
 
         // Use spatialSubset for zooming, but effectiveBounds (CONUS) for data fetching
-        flyToDatasetBounds(spatialSubset || effectiveBounds, mapContext?.map, galleryType);
+        flyToDatasetBounds(
+          spatialSubset || effectiveBounds,
+          mapContext?.map,
+          galleryType
+        );
         break;
       }
 
       case 'feature': {
         const geojsonData = layerData;
         let filtered = geojsonData.features;
-        
-        // REMOVED: AOI filtering for features
-        // if (spatialSubset) { ... }
-        
+
         const iconSvg = `<svg fill="#2496ED" width="30px" height="30px" viewBox="-51.2 -51.2 614.40 614.40" xmlns="http://www.w3.org/2000/svg"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round" stroke="#000" stroke-width="10.24"><path d="M172.268 501.67C26.97 291.031 0 269.413 0 192 0 85.961 85.961 0 192 0s192 85.961 192 192c0 77.413-26.97 99.031-172.268 309.67-9.535 13.774-29.93 13.773-39.464 0zM192 272c44.183 0 80-35.817 80-80s-35.817-80-80-80-80 35.817-80 80 35.817 80 80 80z"></path></g></svg>`;
         const svgToDataURL = (svg) =>
           `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
@@ -545,7 +544,7 @@ export function DeckGlLayerManager({
         newLayers.push(stationLayer);
 
         if (filtered.length > 0 && spatialSubset) {
-            flyToDatasetBounds(spatialSubset, mapContext?.map, galleryType);
+          flyToDatasetBounds(spatialSubset, mapContext?.map, galleryType);
         }
         break;
       }
