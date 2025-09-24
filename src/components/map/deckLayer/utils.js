@@ -192,7 +192,6 @@ export const buildNetCDF2DTileUrl = (
     for (const value of dimensionValues) {
       const params = new URLSearchParams(baseParams);
 
-      // ✅ ADD THIS BLOCK TO INCLUDE THE BBOX
       if (layerData && layerData.bbox) {
         params.append('bbox', layerData.bbox);
       }
@@ -283,12 +282,6 @@ export const addOrUpdateLayers = (layers, newLayers, datasetId) => {
     const shouldKeep = !belongsToCurrentDataset;
 
     return shouldKeep;
-  });
-
-  console.log('📝 After filtering:', {
-    filteredLayersCount: filteredLayers.length,
-    filteredLayerIds: filteredLayers.map((l) => l.id),
-    removedCount: layers.length - filteredLayers.length,
   });
 
   const result = [...filteredLayers, ...newLayers];

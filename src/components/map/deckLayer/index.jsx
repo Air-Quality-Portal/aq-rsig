@@ -8,7 +8,6 @@ import { useMapbox } from '../../../context/mapContext';
 import { getLayerId, buildRasterTileUrl, buildNetCDF2DTileUrl } from './utils';
 
 // ... (all helper functions at the top remain the same) ...
-console.log(MaskExtension); 
 function handleStationClick(clickedFeature, onStationClick) {
   onStationClick(clickedFeature);
 }
@@ -284,6 +283,9 @@ export function DeckGlLayerManager({
     const entry = layerOpacityList.find((l) => l.id === datasetId);
     const dynamicOpacity = entry ? entry.opacity / 100 : 1.0;
     let newLayers = [];
+    const maskExtension = new MaskExtension({
+      maskId: 'aoi-visualization',
+    });
 
     switch (galleryType) {
       case 'point-cloud': {
@@ -301,6 +303,7 @@ export function DeckGlLayerManager({
             beforeId: 'admin-1-boundary-bg',
             visible,
             opacity: dynamicOpacity,
+            extensions: [maskExtension],
           });
           newLayers.push(pointCloudLayer);
         }
@@ -339,7 +342,6 @@ export function DeckGlLayerManager({
           feature
         );
         const uniqueLayerId = `raster-${datasetId}-${layerRefreshCounter}-${itemId.slice(-8)}`;
-
         const rasterLayer = new TileLayer({
           id: uniqueLayerId,
           data: tileUrl,
@@ -351,6 +353,7 @@ export function DeckGlLayerManager({
           visible,
           pickable: true,
           opacity: dynamicOpacity,
+          extensions: [maskExtension],
           updateTriggers: {
             getTileData: [itemId, datetime, layerRefreshCounter],
           },
