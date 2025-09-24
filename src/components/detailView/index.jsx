@@ -101,10 +101,10 @@ const StaticLegend = ({ dataset }) => {
             }}
           >
             {[
-              { color: 'red', width: '25%' },
               { color: 'green', width: '25%' },
-              { color: 'yellow', width: '25%' },
               { color: 'blue', width: '25%' },
+              { color: 'yellow', width: '25%' },
+              { color: 'red', width: '25%' },
             ].map((item, index) => (
               <Box
                 key={index}
@@ -121,13 +121,16 @@ const StaticLegend = ({ dataset }) => {
               0
             </Typography>
             <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
-              0.0127
+              0.1
             </Typography>
             <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
-              0.254
+              0.5
             </Typography>
             <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
-              1.523
+              1.5
+            </Typography>
+            <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
+              2
             </Typography>
           </Box>
           <Typography

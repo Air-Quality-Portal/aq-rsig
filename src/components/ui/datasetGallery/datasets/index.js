@@ -72,7 +72,7 @@ export const galleryData = {
       id: 'calipso-point-cloud',
       name: 'CALIPSO 532 nm Backscatter (Level 1) - [June 30 2023]',
       type: 'point-cloud',
-      url: 'https://rsig-point-cloud.s3.us-west-2.amazonaws.com/outputs/calipso_2023-06-30_{i}/ept-tileset/tileset.json',
+      url: 'https://rsig-point-cloud.s3.us-west-2.amazonaws.com/outputs3/calipso_2023-06-30_{i}/ept-tileset/tileset.json',
       thumbnailUrl: '/path/to/thumbnail1.jpg',
       description:
         'CALIPSO Level 1 data provides calibrated, geolocated lidar measurements of attenuated backscatter at multiple wavelengths. These observations are the foundation for higher-level cloud and aerosol products, enabling studies of atmospheric vertical structure and optical properties.',
