@@ -2,7 +2,7 @@ name: Deploy RSIG Frontend
 on:
   workflow_dispatch:
   push:
-    branches: [ develop ]
+    branches: [ develop, demo-cleanup ]
 
 jobs:
   define-environment:
@@ -15,7 +15,7 @@ jobs:
       - name: Set the environment based on the branch
         id: define_environment
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/develop" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/demo-cleanup" ] || [ "${{ github.event_name }}" = "schedule" ]; then
             echo "env_name=development" >> $GITHUB_OUTPUT
           fi
       - name: Print the environment
@@ -34,7 +34,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: 'v20.9.0'
+          node-version: 'v22.15.1'
 
       - name: Validate required variables and secrets
         run: |
@@ -58,10 +58,6 @@ jobs:
       - name: Build  🔧
         run: |
           echo REACT_APP_MAPBOX_TOKEN="${{ secrets.REACT_APP_MAPBOX_TOKEN }}" >> .env
-          echo REACT_APP_MAPBOX_STYLE_URL="${{ vars.REACT_APP_MAPBOX_STYLE_URL }}" >> .env
-          echo REACT_APP_STAC_API_URL="${{ vars.REACT_APP_STAC_API_URL }}" >> .env
-          echo REACT_APP_BASE_PATH="${{ vars.REACT_APP_BASE_PATH }}" >> .env
-          echo REACT_APP_RASTER_API_URL="${{ vars.REACT_APP_RASTER_API_URL }}" >> .env
           npm install --force
           CI=false npm run build
 
