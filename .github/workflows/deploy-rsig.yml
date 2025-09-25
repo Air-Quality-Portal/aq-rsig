@@ -2,7 +2,7 @@ name: Deploy RSIG Frontend
 on:
   workflow_dispatch:
   push:
-    branches: [ develop, demo-cleanup ]
+    branches: [ develop ]
 
 jobs:
   define-environment:
@@ -15,7 +15,7 @@ jobs:
       - name: Set the environment based on the branch
         id: define_environment
         run: |
-          if [ "${{ github.ref }}" = "refs/heads/demo-cleanup" ] || [ "${{ github.event_name }}" = "schedule" ]; then
+          if [ "${{ github.ref }}" = "refs/heads/develop" ] || [ "${{ github.event_name }}" = "schedule" ]; then
             echo "env_name=development" >> $GITHUB_OUTPUT
           fi
       - name: Print the environment
@@ -42,10 +42,6 @@ jobs:
 
           # Check for required variables
           [ -z "${{ secrets.REACT_APP_MAPBOX_TOKEN }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_TOKEN")
-          [ -z "${{ vars.REACT_APP_MAPBOX_STYLE_URL }}" ] && missing_vars+=("vars.REACT_APP_MAPBOX_STYLE_URL")
-          [ -z "${{ vars.REACT_APP_STAC_API_URL }}" ] && missing_vars+=("vars.REACT_APP_STAC_API_URL")
-          [ -z "${{ vars.REACT_APP_BASE_PATH }}" ] && missing_vars+=("vars.REACT_APP_BASE_PATH")
-          [ -z "${{ vars.REACT_APP_RASTER_API_URL }}" ] && missing_vars+=("vars.REACT_APP_RASTER_API_URL")
 
           # If any variables are missing, print them and exit with an error
           if [ ${#missing_vars[@]} -ne 0 ]; then
