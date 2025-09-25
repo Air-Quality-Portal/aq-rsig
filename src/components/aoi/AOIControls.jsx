@@ -14,6 +14,8 @@ import {
   LinearProgress,
   Collapse,
   Divider,
+  CircularProgress,
+  AlertTitle,
 } from '@mui/material';
 import {
   Draw as DrawIcon,
@@ -24,6 +26,8 @@ import {
   Stop as StopIcon,
   KeyboardArrowDown as ArrowDownIcon,
   CheckCircle as CheckIcon,
+  Refresh as RefreshIcon,
+  Warning as WarningIcon,
 } from '@mui/icons-material';
 import { useAOI } from '../../context/aoiContext';
 import { getTemporalDisplayName } from '../../utils/temporalGrouping';
@@ -65,6 +69,15 @@ export function AOIControls({
   position = 'top-left',
   activeDate = null,
   activeLayer = null,
+  // New props for handling AOI loading state
+  areAOIsLoading = false,
+  aoiLoadError = null,
+  areAOIsLoaded = false,
+  onRetryLoadAOIs = null,
+  // New props for analysis-specific dates/layers
+  analysisActiveDate = null,
+  analysisActiveLayer = null,
+  analysisTimeRange = null,
 }) {
   const { state, actions } = useAOI();
   const [showPresets, setShowPresets] = useState(false);
@@ -138,6 +151,12 @@ export function AOIControls({
     actions.setDrawing(false);
   }, [actions]);
 
+  const handleRetryLoadAOIs = useCallback(() => {
+    if (onRetryLoadAOIs) {
+      onRetryLoadAOIs();
+    }
+  }, [onRetryLoadAOIs]);
+
   const canRunAnalysis =
     state.selectedAOI &&
     state.selectedTemporalGroup &&
@@ -174,23 +193,27 @@ export function AOIControls({
 
   const formatActiveDate = (dateString) => {
     if (!dateString) return '';
-    let date;
-    if (
-      typeof dateString === 'string' &&
-      !dateString.includes('Z') &&
-      !dateString.includes('+') &&
-      !dateString.includes('-')
-    ) {
-      date = new Date(dateString + 'Z');
-    } else {
-      date = new Date(dateString);
+
+    // Handle different date formats more carefully
+    const date = new Date(dateString);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date:', dateString);
+      return dateString;
     }
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC', // Force UTC to avoid timezone shifts
     });
   };
+
+  // Use analysis dates instead of animation dates
+  const displayDate = analysisActiveDate || activeDate;
+  const displayLayer = analysisActiveLayer || activeLayer;
 
   if (!hasLayers) {
     return (
@@ -209,12 +232,12 @@ export function AOIControls({
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-            <AnalyticsIcon color="action" fontSize="small" />
-            <Typography variant="subtitle2" color="text.secondary">
+            <AnalyticsIcon color='action' fontSize='small' />
+            <Typography variant='subtitle2' color='text.secondary'>
               Area Analysis
             </Typography>
           </Box>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant='body2' color='text.secondary'>
             Add layers to enable analysis
           </Typography>
         </Paper>
@@ -249,154 +272,291 @@ export function AOIControls({
             borderColor: 'divider',
           }}
         >
-          <AnalyticsIcon fontSize="small" color="primary" />
-          <Typography variant="subtitle2" fontWeight="600">
+          <AnalyticsIcon fontSize='small' color='primary' />
+          <Typography variant='subtitle2' fontWeight='600'>
             Area Analysis
           </Typography>
-          {state.selectedAOI && state.selectedTemporalGroup && state.selectedTimeWindow && (
-            <CheckIcon fontSize="small" color="success" />
-          )}
+          {state.selectedAOI &&
+            state.selectedTemporalGroup &&
+            state.selectedTimeWindow && (
+              <CheckIcon fontSize='small' color='success' />
+            )}
         </Box>
 
         <Box sx={{ p: 1.5, pt: 1 }}>
           {/* Area Selection */}
           <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" fontWeight="500" gutterBottom sx={{ color: 'text.primary' }}>
+            <Typography
+              variant='body2'
+              fontWeight='500'
+              gutterBottom
+              sx={{ color: 'text.primary' }}
+            >
               Analysis Area
             </Typography>
-            
+
             <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
               {!state.isDrawing ? (
                 <Button
-                  variant="outlined"
-                  size="small"
+                  variant='outlined'
+                  size='small'
                   onClick={handleStartDrawing}
                   disabled={state.analysisState.status === 'analyzing'}
-                  sx={{ 
+                  sx={{
                     minWidth: 'auto',
                     px: 1,
                     py: 0.5,
                   }}
                 >
-                  <DrawIcon fontSize="small" />
+                  <DrawIcon fontSize='small' />
                 </Button>
               ) : (
                 <Button
-                  variant="outlined"
-                  size="small"
+                  variant='outlined'
+                  size='small'
                   onClick={handleStopDrawing}
-                  color="warning"
-                  sx={{ 
+                  color='warning'
+                  sx={{
                     minWidth: 'auto',
                     px: 1,
                     py: 0.5,
                   }}
                 >
-                  <StopIcon fontSize="small" />
+                  <StopIcon fontSize='small' />
                 </Button>
               )}
 
-              {/* Compact presets dropdown */}
-              {state.predefinedAOIs.length > 0 && (
-                <FormControl 
-                  size="small" 
-                  sx={{ 
-                    flex: 1,
-                    minWidth: 120
+              {/* Predefined AOI Select with Loading State */}
+              <FormControl
+                size='small'
+                sx={{
+                  flex: 1,
+                  minWidth: 120,
+                }}
+              >
+                <Select
+                  value=''
+                  onChange={(e) => handlePredefinedAOISelect(e.target.value)}
+                  displayEmpty
+                  disabled={
+                    state.isDrawing ||
+                    state.analysisState.status === 'analyzing' ||
+                    areAOIsLoading ||
+                    (aoiLoadError && !areAOIsLoaded)
+                  }
+                  sx={{
+                    fontSize: '0.75rem',
+                    '& .MuiSelect-select': {
+                      py: 0.5,
+                      px: 1,
+                    },
                   }}
                 >
-                  <Select
-                    value=""
-                    onChange={(e) => handlePredefinedAOISelect(e.target.value)}
-                    displayEmpty
-                    disabled={state.isDrawing || state.analysisState.status === 'analyzing'}
-                    sx={{ 
-                      fontSize: '0.75rem',
-                      '& .MuiSelect-select': {
-                        py: 0.5,
-                        px: 1,
-                      }
-                    }}
-                  >
-                    <MenuItem value="" disabled>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <LocationIcon fontSize="small" color="action" />
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem' }}>
-                          Choose preset area
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                    {state.predefinedAOIs.map((aoi) => (
+                  <MenuItem value='' disabled>
+                    <Box
+                      sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+                    >
+                      {areAOIsLoading ? (
+                        <>
+                          <CircularProgress size={12} />
+                          <Typography
+                            variant='body2'
+                            color='text.secondary'
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            Loading areas...
+                          </Typography>
+                        </>
+                      ) : aoiLoadError ? (
+                        <>
+                          <WarningIcon fontSize='small' color='error' />
+                          <Typography
+                            variant='body2'
+                            color='error'
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            Load failed
+                          </Typography>
+                        </>
+                      ) : (
+                        <>
+                          <LocationIcon fontSize='small' color='action' />
+                          <Typography
+                            variant='body2'
+                            color='text.secondary'
+                            sx={{ fontSize: '0.75rem' }}
+                          >
+                            Choose preset area
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
+                  </MenuItem>
+
+                  {/* Only show state options if loaded successfully */}
+                  {areAOIsLoaded &&
+                    !areAOIsLoading &&
+                    !aoiLoadError &&
+                    state.predefinedAOIs.map((aoi) => (
                       <MenuItem key={aoi.id} value={aoi.id}>
-                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                        <Typography
+                          variant='body2'
+                          sx={{ fontSize: '0.75rem' }}
+                        >
                           {aoi.name}
                         </Typography>
                       </MenuItem>
                     ))}
-                  </Select>
-                </FormControl>
+                </Select>
+              </FormControl>
+
+              {/* Retry button for failed AOI loading */}
+              {aoiLoadError && onRetryLoadAOIs && (
+                <Tooltip title='Retry loading preset areas'>
+                  <Button
+                    variant='text'
+                    size='small'
+                    onClick={handleRetryLoadAOIs}
+                    disabled={areAOIsLoading}
+                    sx={{
+                      minWidth: 'auto',
+                      px: 1,
+                      py: 0.5,
+                    }}
+                  >
+                    <RefreshIcon fontSize='small' />
+                  </Button>
+                </Tooltip>
               )}
 
               {state.selectedAOI && (
                 <Button
-                  variant="text"
-                  size="small"
+                  variant='text'
+                  size='small'
                   onClick={handleClearAOI}
-                  color="error"
-                  sx={{ 
+                  color='error'
+                  sx={{
                     minWidth: 'auto',
                     px: 1,
                     py: 0.5,
                   }}
                 >
-                  <ClearIcon fontSize="small" />
+                  <ClearIcon fontSize='small' />
                 </Button>
               )}
             </Box>
 
+            {/* AOI Loading Error Alert */}
+            {aoiLoadError && (
+              <Alert
+                severity='warning'
+                sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}
+                action={
+                  onRetryLoadAOIs && (
+                    <Button
+                      color='inherit'
+                      size='small'
+                      onClick={handleRetryLoadAOIs}
+                      disabled={areAOIsLoading}
+                    >
+                      Retry
+                    </Button>
+                  )
+                }
+              >
+                <AlertTitle sx={{ fontSize: '0.8rem', mb: 0.5 }}>
+                  Failed to load preset areas
+                </AlertTitle>
+                {aoiLoadError}
+              </Alert>
+            )}
+
+            {/* AOI Loading Progress */}
+            {areAOIsLoading && (
+              <Alert
+                severity='info'
+                sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CircularProgress size={14} />
+                  <Typography variant='body2' sx={{ fontSize: '0.75rem' }}>
+                    Loading US states...
+                  </Typography>
+                </Box>
+              </Alert>
+            )}
+
             {state.isDrawing && (
-              <Alert severity="info" sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}>
+              <Alert
+                severity='info'
+                sx={{ py: 0.5, fontSize: '0.75rem', mb: 1 }}
+              >
                 Click points to draw polygon, click first point to close
               </Alert>
             )}
 
             {state.selectedAOI && (
               <Chip
-                label="Area Selected"
-                size="small"
-                color="success"
-                variant="outlined"
+                label='Area Selected'
+                size='small'
+                color='success'
+                variant='outlined'
                 sx={{ fontSize: '0.7rem', height: 20 }}
               />
+            )}
+
+            {/* Show state count when loaded */}
+            {areAOIsLoaded && !areAOIsLoading && !aoiLoadError && (
+              <Typography
+                variant='caption'
+                color='text.secondary'
+                sx={{ fontSize: '0.65rem', display: 'block', mt: 0.5 }}
+              >
+                {state.predefinedAOIs.length} preset areas available
+              </Typography>
             )}
           </Box>
 
           {/* Data Selection */}
           {state.temporalGroups.length > 0 && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" fontWeight="500" gutterBottom sx={{ color: 'text.primary' }}>
+              <Typography
+                variant='body2'
+                fontWeight='500'
+                gutterBottom
+                sx={{ color: 'text.primary' }}
+              >
                 Data & Time Window
               </Typography>
-              
+
               <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                <FormControl size="small" sx={{ minWidth: 120, flex: 1 }}>
+                <FormControl size='small' sx={{ minWidth: 120, flex: 1 }}>
                   <Select
                     value={state.selectedTemporalGroup || ''}
                     onChange={handleTemporalGroupSelect}
                     displayEmpty
-                    disabled={state.analysisState.status === 'analyzing' || state.isDrawing}
+                    disabled={
+                      state.analysisState.status === 'analyzing' ||
+                      state.isDrawing
+                    }
                     sx={{ fontSize: '0.8rem' }}
                   >
-                    <MenuItem value="" disabled>
-                      <Typography variant="body2" color="text.secondary">
+                    <MenuItem value='' disabled>
+                      <Typography variant='body2' color='text.secondary'>
                         Resolution
                       </Typography>
                     </MenuItem>
                     {state.temporalGroups.map((group) => (
                       <MenuItem key={group.id} value={group.id}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <TimelineIcon fontSize="small" />
-                          <Typography variant="body2">
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                          }}
+                        >
+                          <TimelineIcon fontSize='small' />
+                          <Typography variant='body2'>
                             {getTemporalDisplayName(group.resolution)}
                           </Typography>
                         </Box>
@@ -406,22 +566,25 @@ export function AOIControls({
                 </FormControl>
 
                 {timeWindowOptions.length > 0 && (
-                  <FormControl size="small" sx={{ minWidth: 80 }}>
+                  <FormControl size='small' sx={{ minWidth: 80 }}>
                     <Select
                       value={state.selectedTimeWindow || ''}
                       onChange={handleTimeWindowSelect}
                       displayEmpty
-                      disabled={state.analysisState.status === 'analyzing' || state.isDrawing}
+                      disabled={
+                        state.analysisState.status === 'analyzing' ||
+                        state.isDrawing
+                      }
                       sx={{ fontSize: '0.8rem' }}
                     >
-                      <MenuItem value="" disabled>
-                        <Typography variant="body2" color="text.secondary">
+                      <MenuItem value='' disabled>
+                        <Typography variant='body2' color='text.secondary'>
                           Window
                         </Typography>
                       </MenuItem>
                       {timeWindowOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
-                          <Typography variant="body2">
+                          <Typography variant='body2'>
                             {option.label}
                           </Typography>
                         </MenuItem>
@@ -431,18 +594,8 @@ export function AOIControls({
                 )}
               </Box>
 
-              {state.selectedTemporalGroup && (
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                  {state.temporalGroups
-                    .find((g) => g.id === state.selectedTemporalGroup)
-                    ?.layers.map((l) => l.name)
-                    .slice(0, 2)
-                    .join(', ')}
-                  {state.temporalGroups.find((g) => g.id === state.selectedTemporalGroup)?.layers.length > 2 && '...'}
-                </Typography>
-              )}
-
-              {activeDate && state.selectedTimeWindow && (
+              {/* Analysis Dataset & Time Range - Clean single display */}
+              {state.selectedTemporalGroup && state.selectedTimeWindow && (
                 <Box
                   sx={{
                     mt: 1,
@@ -453,14 +606,34 @@ export function AOIControls({
                     borderColor: 'primary.200',
                   }}
                 >
-                  <Typography variant="caption" color="primary.600" sx={{ fontSize: '0.7rem', fontWeight: 500 }}>
-                    From {formatActiveDate(activeDate)}
+                  <Typography
+                    variant='caption'
+                    color='primary.700'
+                    sx={{
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      display: 'block',
+                    }}
+                  >
+                    {displayLayer?.name || 'Dataset'}
                   </Typography>
-                  {activeLayer && (
-                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.65rem' }}>
-                      {activeLayer.name}
-                    </Typography>
-                  )}
+                  <Typography
+                    variant='caption'
+                    color='text.secondary'
+                    sx={{ fontSize: '0.65rem' }}
+                  >
+                    {state.selectedTimeWindow} from{' '}
+                    {formatActiveDate(displayDate)}
+                    {analysisTimeRange && (
+                      <>
+                        {' '}
+                        • Available: {formatActiveDate(
+                          analysisTimeRange.start
+                        )}{' '}
+                        - {formatActiveDate(analysisTimeRange.end)}
+                      </>
+                    )}
+                  </Typography>
                 </Box>
               )}
             </Box>
@@ -479,7 +652,7 @@ export function AOIControls({
                 }
                 sx={{ py: 0.5, fontSize: '0.75rem' }}
               >
-                <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                <Typography variant='body2' sx={{ fontSize: '0.75rem' }}>
                   {state.analysisState.message}
                 </Typography>
               </Alert>
@@ -487,15 +660,15 @@ export function AOIControls({
               {state.analysisState.status === 'analyzing' && (
                 <Box sx={{ mt: 1 }}>
                   <LinearProgress
-                    variant="determinate"
+                    variant='determinate'
                     value={state.analysisState.progress || 0}
                     sx={{ height: 3, borderRadius: 1 }}
                   />
                   <Typography
-                    variant="caption"
-                    sx={{ 
-                      display: 'block', 
-                      textAlign: 'center', 
+                    variant='caption'
+                    sx={{
+                      display: 'block',
+                      textAlign: 'center',
                       mt: 0.25,
                       fontSize: '0.65rem',
                       color: 'text.secondary',
@@ -510,12 +683,14 @@ export function AOIControls({
 
           {/* Run Analysis Button */}
           <Button
-            variant="contained"
+            variant='contained'
             fullWidth
             startIcon={<AnalyticsIcon />}
             onClick={handleRunAnalysis}
-            disabled={!canRunAnalysis || state.analysisState.status === 'analyzing'}
-            sx={{ 
+            disabled={
+              !canRunAnalysis || state.analysisState.status === 'analyzing'
+            }
+            sx={{
               py: 1,
               fontSize: '0.8rem',
               fontWeight: 600,

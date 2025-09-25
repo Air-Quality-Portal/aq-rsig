@@ -1,23 +1,58 @@
-// hooks/useAOIIntegration.js - Fixed to pass activeDate and timeWindow
-import { useCallback, useEffect, useMemo } from 'react';
+// hooks/useAOIIntegration.js - Fixed to use animation active date as analysis start date
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAOI } from '../context/aoiContext';
 import { analysisService } from '../services/analysisService';
 import {
   groupLayersByTemporalResolution,
   getDefaultPredefinedAOIs,
+  getAnalysisTimeRange,
 } from '../utils/temporalGrouping';
 
 export function useAOIIntegration(layerDisplayList = [], options = {}) {
   const { activeDate, activeLayer } = options;
   const { state, actions } = useAOI();
+  
+  // Add loading state for predefined AOIs
+  const [aoiLoadingState, setAoiLoadingState] = useState({
+    loading: true,
+    error: null,
+    loaded: false
+  });
 
-  // Memoize predefined AOIs to prevent recreation
-  const predefinedAOIs = useMemo(() => getDefaultPredefinedAOIs(), []);
-
-  // Initialize predefined AOIs ONLY ONCE
+  // Initialize and load predefined AOIs
   useEffect(() => {
-    actions.setPredefinedAOIs(predefinedAOIs);
-  }, []); // Remove actions dependency - only run once
+    let mounted = true;
+    
+    const loadPredefinedAOIs = async () => {
+      setAoiLoadingState({ loading: true, error: null, loaded: false });
+      
+      try {
+        console.log('Loading predefined AOIs...');
+        const predefinedAOIs = await getDefaultPredefinedAOIs();
+        
+        if (mounted) {
+          console.log(`Loaded ${predefinedAOIs.length} predefined AOIs`);
+          actions.setPredefinedAOIs(predefinedAOIs);
+          setAoiLoadingState({ loading: false, error: null, loaded: true });
+        }
+      } catch (error) {
+        console.error('Failed to load predefined AOIs:', error);
+        if (mounted) {
+          setAoiLoadingState({ 
+            loading: false, 
+            error: error.message || 'Failed to load predefined areas',
+            loaded: false
+          });
+        }
+      }
+    };
+
+    loadPredefinedAOIs();
+
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty dependency array - only run once
 
   // Memoize temporal groups to prevent unnecessary recalculation
   const temporalGroups = useMemo(() => {
@@ -27,7 +62,44 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
   // Update temporal groups when they actually change
   useEffect(() => {
     actions.setTemporalGroups(temporalGroups);
-  }, [temporalGroups]); // Remove actions dependency
+  }, [temporalGroups, actions]);
+
+  // Get the selected temporal group details
+  const selectedTemporalGroup = useMemo(() => {
+    return state.temporalGroups.find(g => g.id === state.selectedTemporalGroup);
+  }, [state.temporalGroups, state.selectedTemporalGroup]);
+
+  // Get analysis date range from selected temporal group
+  const analysisTimeRange = useMemo(() => {
+    if (!selectedTemporalGroup) return null;
+    return getAnalysisTimeRange(selectedTemporalGroup);
+  }, [selectedTemporalGroup]);
+
+  // Get the appropriate active date for analysis - FIXED: Prioritize animation active date
+  const analysisActiveDate = useMemo(() => {
+    // Priority 1: Use the current active date from animation if available
+    if (activeDate) {
+      return activeDate;
+    }
+
+    // Priority 2: Use the start of the temporal group's time range as fallback
+    if (selectedTemporalGroup && analysisTimeRange) {
+      return analysisTimeRange.start.toISOString();
+    }
+
+    // Priority 3: No date available
+    return null;
+  }, [activeDate, selectedTemporalGroup, analysisTimeRange]);
+
+  // Get the appropriate layer for analysis (first layer from selected temporal group)
+  const analysisActiveLayer = useMemo(() => {
+    if (!selectedTemporalGroup || !selectedTemporalGroup.layers?.length) {
+      return activeLayer; // Fallback to animation layer
+    }
+
+    // Use the first layer from the selected temporal group
+    return selectedTemporalGroup.layers[0];
+  }, [selectedTemporalGroup, activeLayer]);
 
   // Start drawing AOI
   const startDrawing = useCallback(() => {
@@ -36,7 +108,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
       status: 'idle',
       message: 'Draw a polygon on the map to select your area of interest',
     });
-  }, []); // Remove actions dependency
+  }, [actions]);
 
   // Handle AOI drawing complete
   const onDrawComplete = useCallback((feature) => {
@@ -46,7 +118,7 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
       status: 'idle',
       message: 'Area selected. Choose temporal resolution and run analysis.',
     });
-  }, []); // Remove actions dependency
+  }, [actions]);
 
   // Handle AOI drawing cancel
   const onDrawCancel = useCallback(() => {
@@ -62,26 +134,26 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
         message: 'Area selected. Choose temporal resolution and run analysis.',
       });
     }
-  }, [state.selectedAOI]); // Only depend on selectedAOI
+  }, [state.selectedAOI, actions]);
 
   // Clear AOI
   const clearAOI = useCallback(() => {
     actions.setAOI(null);
     actions.setDrawing(false); // Also stop drawing
     actions.clearAnalysis();
-  }, []); // Remove actions dependency
+  }, [actions]);
 
-  // Run analysis
+  // Run analysis - FIXED: Now uses the current active date from animation
   const runAnalysis = useCallback(async () => {
     if (!state.selectedAOI || !state.selectedTemporalGroup || state.isDrawing) {
       return;
     }
 
     // Check for required parameters
-    if (!activeDate) {
+    if (!analysisActiveDate) {
       actions.setAnalysisState({
         status: 'error',
-        message: 'Active date is required. Please select a time frame on the map.',
+        message: 'Analysis date is required. Please select a temporal group with valid data.',
       });
       return;
     }
@@ -105,6 +177,13 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
       return;
     }
 
+    // DEBUG: Log the active date being passed to analysis
+    console.log('=== AOI INTEGRATION DEBUG ===');
+    console.log('analysisActiveDate:', analysisActiveDate);
+    console.log('activeDate from props:', activeDate);
+    console.log('selectedTimeWindow:', state.selectedTimeWindow);
+    console.log('temporalGroup resolution:', temporalGroup.resolution);
+
     actions.setAnalysisState({
       status: 'analyzing',
       message: 'Starting analysis...',
@@ -123,9 +202,9 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
           });
         },
         {
-          activeDate: activeDate,
+          activeDate: analysisActiveDate, // Now uses current animation date as start point
           timeWindow: state.selectedTimeWindow,
-          layerName: activeLayer?.name || 'Unknown Layer',
+          layerName: analysisActiveLayer?.name || temporalGroup.layers[0]?.name || 'Unknown Layer',
         }
       );
 
@@ -148,9 +227,11 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     state.selectedTimeWindow,
     state.temporalGroups, 
     state.isDrawing,
-    activeDate,
-    activeLayer
-  ]); // Add activeDate and activeLayer to dependencies
+    analysisActiveDate,      // Now properly uses animation active date
+    analysisActiveLayer,     // Use temporal group layer
+    activeDate,              // Add activeDate as dependency for debugging
+    actions
+  ]);
 
   // Clear results but keep AOI
   const clearResults = useCallback(() => {
@@ -161,11 +242,30 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
         ? 'Area selected. Choose temporal resolution and run analysis.'
         : 'Select an area to start analysis',
     });
-  }, [state.selectedAOI]); // Remove actions dependency
+  }, [state.selectedAOI, actions]);
+
+  // Retry loading AOIs if failed
+  const retryLoadAOIs = useCallback(async () => {
+    setAoiLoadingState({ loading: true, error: null, loaded: false });
+    
+    try {
+      const predefinedAOIs = await getDefaultPredefinedAOIs();
+      actions.setPredefinedAOIs(predefinedAOIs);
+      setAoiLoadingState({ loading: false, error: null, loaded: true });
+    } catch (error) {
+      console.error('Retry failed to load predefined AOIs:', error);
+      setAoiLoadingState({ 
+        loading: false, 
+        error: error.message || 'Failed to load predefined areas',
+        loaded: false
+      });
+    }
+  }, [actions]);
 
   return {
     // State
     aoiState: state,
+    aoiLoadingState, // New loading state for predefined AOIs
 
     // Actions
     startDrawing,
@@ -174,18 +274,29 @@ export function useAOIIntegration(layerDisplayList = [], options = {}) {
     onDrawComplete,
     onDrawCancel,
     clearResults,
+    retryLoadAOIs, // New retry function
 
     // Computed
     canRunAnalysis: Boolean(
       state.selectedAOI &&
         state.selectedTemporalGroup &&
         state.selectedTimeWindow &&
-        activeDate &&
+        analysisActiveDate &&      // Now properly validates animation date
         state.temporalGroups.length > 0 &&
         !state.isDrawing // Don't allow analysis while drawing
     ),
     isAnalyzing: state.analysisState.status === 'analyzing',
     hasResults: Boolean(state.analysisResults),
     isDrawing: state.isDrawing,
+    
+    // New computed properties for AOI loading state
+    areAOIsLoading: aoiLoadingState.loading,
+    aoiLoadError: aoiLoadingState.error,
+    areAOIsLoaded: aoiLoadingState.loaded,
+
+    // Expose analysis-specific dates/layers (for display purposes)
+    analysisActiveDate,
+    analysisActiveLayer,
+    analysisTimeRange,
   };
 }

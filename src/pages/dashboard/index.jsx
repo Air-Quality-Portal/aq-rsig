@@ -8,10 +8,12 @@ import React, {
 import Box from '@mui/material/Box';
 import Paper from '@mui/material/Paper';
 import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import AddIcon from '@mui/icons-material/Add';
 import Collapse from '@mui/material/Collapse';
 import Typography from '@mui/material/Typography';
 import { ToggleButtonGroup, ToggleButton } from '@mui/material';
@@ -44,7 +46,7 @@ import {
   getAnimationSpeed,
 } from '../../utils/animationUtils';
 
-const TITLE = 'RSIG Dashboard';
+const TITLE = 'AQ Visualization Dashboard';
 const DESCRIPTION = '';
 
 // Collapsible Section Component
@@ -91,7 +93,7 @@ const CollapsibleSection = ({
 
 export function DashboardContent({ loadingData }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [openDrawer, setOpenDrawer] = useState(true);
+  const [openDrawer, setOpenDrawer] = useState(false);
   const [activeLayerUrl, setActiveLayerUrl] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [selectedDatasetId, setSelectedDatasetId] = useState(null);
@@ -127,6 +129,13 @@ export function DashboardContent({ loadingData }) {
     onDrawCancel,
     clearResults,
     hasResults,
+    areAOIsLoading,
+    aoiLoadError,
+    areAOIsLoaded,
+    retryLoadAOIs,
+    analysisActiveDate,
+    analysisActiveLayer,
+    analysisTimeRange,
   } = useAOIIntegration(layerDisplayList, {
     activeDate: currentActiveDate,
     activeLayer: selectedRecord,
@@ -382,9 +391,9 @@ export function DashboardContent({ loadingData }) {
     [layerDisplayList, selectedRecord?.id]
   );
 
-  const handleSpatialSubsetChange = useCallback((newSpatialSubset) => {
-    setSpatialSubset(newSpatialSubset);
-  }, []);
+  // const handleSpatialSubsetChange = useCallback((newSpatialSubset) => {
+  //   setSpatialSubset(newSpatialSubset);
+  // }, []);
 
   // Priority management for bottom components
   const hideStationChartWithPriority = useCallback(() => {
@@ -465,7 +474,6 @@ export function DashboardContent({ loadingData }) {
     }
   }, [hasResults]);
 
-  // Update animation features when layer data changes - FIX: Remove currentActiveFeature dependency
   useEffect(() => {
     if (selectedRecord && shouldShowAnimation(selectedRecord, layerData)) {
       const features = getAnimationFeatures(selectedRecord, layerData);
@@ -625,25 +633,59 @@ export function DashboardContent({ loadingData }) {
           >
             <Stack sx={{ p: 1.5, overflowY: 'auto' }} spacing={1.5}>
               {/* Dashboard Title Section */}
-              <CollapsibleSection title='Dashboard' defaultExpanded={true}>
-                {/* <Title title={TITLE} description={DESCRIPTION} /> */}
-              </CollapsibleSection>
+              <Typography title='Dashboard' defaultExpanded={true}>
+                <Title title={TITLE} description={DESCRIPTION} />
+              </Typography>
 
-              {/* AOI Controls Section */}
-              <CollapsibleSection
-                title='Area of Interest'
-                defaultExpanded={false}
-              >
-                <AOIControls
-                  layerDisplayList={layerDisplayList}
-                  onStartDrawing={startDrawing}
-                  onClearAOI={clearAOI}
-                  onRunAnalysis={runAnalysis}
-                  position='embedded'
-                  activeDate={currentActiveDate}
-                  activeLayer={selectedRecord}
-                />
-              </CollapsibleSection>
+              {/* Add Layer Button - always at the top */}
+              <Box sx={{ mb: 1.5 }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  startIcon={<AddIcon />}
+                  onClick={() => setOpenDrawer(true)}
+                  sx={{
+                    py: 0.75,
+                    fontSize: '0.8rem',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    borderColor: 'primary.300',
+                    color: 'primary.700',
+                    '&:hover': {
+                      borderColor: 'primary.500',
+                      backgroundColor: 'primary.50',
+                    },
+                  }}
+                >
+                  Add Dataset Layer
+                </Button>
+              </Box>
+
+              {/* AOI Controls Section - only show when layers are present */}
+              {layerDisplayList.length > 0 && (
+                <CollapsibleSection
+                  title='Area of Interest'
+                  defaultExpanded={false}
+                >
+                  <AOIControls
+                    layerDisplayList={layerDisplayList}
+                    onStartDrawing={startDrawing}
+                    onClearAOI={clearAOI}
+                    onRunAnalysis={runAnalysis}
+                    position='embedded'
+                    activeDate={currentActiveDate}
+                    activeLayer={selectedRecord}
+                    areAOIsLoading={areAOIsLoading}
+                    aoiLoadError={aoiLoadError}
+                    areAOIsLoaded={areAOIsLoaded}
+                    onRetryLoadAOIs={retryLoadAOIs}
+                    analysisActiveDate={analysisActiveDate}
+                    analysisActiveLayer={analysisActiveLayer}
+                    analysisTimeRange={analysisTimeRange}
+                  />
+                </CollapsibleSection>
+              )}
 
               {/* Animation Controls Section */}
               {activeBottomComponent === 'animation' &&
@@ -653,7 +695,7 @@ export function DashboardContent({ loadingData }) {
                 animationFeatures.length > 0 && (
                   <CollapsibleSection
                     title='Animation Controls'
-                    defaultExpanded={false}
+                    defaultExpanded={true}
                   >
                     <div
                       style={{

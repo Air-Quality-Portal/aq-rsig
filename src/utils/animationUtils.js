@@ -225,15 +225,15 @@ export function getAnimationFeatures(datasetInfo, layerData) {
 export function getAnimationSpeed(timeInterval) {
   switch (timeInterval?.toLowerCase()) {
     case 'hourly':
-      return 300; // Fast for hourly data
+      return 2000; // Fast for hourly data
     case 'daily':
-      return 500; // Medium for daily data
+      return 2000; // Medium for daily data
     case 'monthly':
-      return 800; // Slower for monthly data
+      return 2000; // Slower for monthly data
     case 'yearly':
-      return 1200; // Slowest for yearly data
+      return 2000; // Slowest for yearly data
     default:
-      return 700; // Default speed
+      return 2000; // Default speed
   }
 }
 

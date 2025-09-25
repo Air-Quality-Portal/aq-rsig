@@ -34,7 +34,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: 'v20.9.0'
+          node-version: 'v22.15.1'
 
       - name: Validate required variables and secrets
         run: |
@@ -42,10 +42,6 @@ jobs:
 
           # Check for required variables
           [ -z "${{ secrets.REACT_APP_MAPBOX_TOKEN }}" ] && missing_vars+=("secrets.REACT_APP_MAPBOX_TOKEN")
-          [ -z "${{ vars.REACT_APP_MAPBOX_STYLE_URL }}" ] && missing_vars+=("vars.REACT_APP_MAPBOX_STYLE_URL")
-          [ -z "${{ vars.REACT_APP_STAC_API_URL }}" ] && missing_vars+=("vars.REACT_APP_STAC_API_URL")
-          [ -z "${{ vars.REACT_APP_BASE_PATH }}" ] && missing_vars+=("vars.REACT_APP_BASE_PATH")
-          [ -z "${{ vars.REACT_APP_RASTER_API_URL }}" ] && missing_vars+=("vars.REACT_APP_RASTER_API_URL")
 
           # If any variables are missing, print them and exit with an error
           if [ ${#missing_vars[@]} -ne 0 ]; then
@@ -58,12 +54,8 @@ jobs:
       - name: Build  🔧
         run: |
           echo REACT_APP_MAPBOX_TOKEN="${{ secrets.REACT_APP_MAPBOX_TOKEN }}" >> .env
-          echo REACT_APP_MAPBOX_STYLE_URL="${{ vars.REACT_APP_MAPBOX_STYLE_URL }}" >> .env
-          echo REACT_APP_STAC_API_URL="${{ vars.REACT_APP_STAC_API_URL }}" >> .env
-          echo REACT_APP_BASE_PATH="${{ vars.REACT_APP_BASE_PATH }}" >> .env
-          echo REACT_APP_RASTER_API_URL="${{ vars.REACT_APP_RASTER_API_URL }}" >> .env
-          npm install --force
-          CI=false npm run build
+          yarn
+          CI=false yarn build
 
       - name: Upload build folder
         uses: actions/upload-artifact@v4
