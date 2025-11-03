@@ -129,23 +129,21 @@ export const buildRasterTileUrl = (
   options = {},
   feature = null
 ) => {
-
   const {
-    assets = 'cog_default',
+    assets = 'cog_default', // This is now dynamic (e.g., 'CO', 'O3', 'cog_default')
     colormap = 'viridis',
     rescale = '0,255',
     nodata = '-9999',
   } = options;
 
-  if (
-    feature &&
-    feature.assets &&
-    feature.assets.cog_default &&
-    feature.assets.cog_default.href
-  ) {
-    const s3Url = feature.assets.cog_default.href;
-    const encodedS3Url = encodeURIComponent(s3Url);
+  // --- FIX #2: Dynamically get the asset from the feature ---
+  // It looks for 'CO' or 'O3' or 'cog_default' inside feature.assets
+  const assetData = feature?.assets?.[assets];
 
+  if (assetData && assetData.href) {
+    const s3Url = assetData.href;
+    // --- END FIX #2 ---
+    const encodedS3Url = encodeURIComponent(s3Url);
 
     const baseUrl =
       'https://dev.openveda.cloud/api/raster/cog/tiles/WebMercatorQuad/{z}/{x}/{y}@1x';
@@ -158,6 +156,10 @@ export const buildRasterTileUrl = (
       `&colormap_name=${colormap}`
     );
   }
+
+  // Fallback or error if asset not found
+  console.warn(`Asset '${assets}' not found in feature '${itemId}'.`);
+  return null;
 };
 
 // In your utils.js file
@@ -291,3 +293,63 @@ export const addOrUpdateLayers = (layers, newLayers, datasetId) => {
 function escapeRegExp(string) {
   return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
+
+// URL Builder for different dataset types
+export const buildDatasetUrl = (dataset) => {
+
+  const collectionId = dataset.collection_id || dataset.id;
+
+  const { type, url } = dataset;
+  const baseUrl = 'https://dev.openveda.cloud/api';
+
+  switch (type) {
+    case 'raster':
+      return `${baseUrl}/stac/collections/${collectionId}/items`;
+
+    case 'feature':
+      return `${baseUrl}/features/collections/${collectionId}/items`;
+
+    case 'point-cloud':
+      if (url) {
+        return url;
+      }
+      return `${baseUrl}/stac/collections/${collectionId}/items`;
+
+    case 'geojson':
+      return `${baseUrl}/collections/${collectionId}/items`;
+    case 'netcdf-2d':
+      return `${baseUrl}/stac/collections/${collectionId}/items`;
+    default:
+      console.warn(`Unknown dataset type: ${type}`);
+      return null;
+  }
+};
+
+export const fetchDatasetData = async (dataset) => {
+  if (dataset.type === 'point-cloud') {
+    const tilesetTemplate = dataset.url;
+    const firstDate = dataset.available_dates?.[0] ?? null;
+    const tilesetUrl = firstDate
+      ? tilesetTemplate.replace('{DateTime}', firstDate)
+      : null;
+
+    return {
+      datasetInfo: { ...dataset },
+      galleryType: dataset.type,
+      tilesetTemplate,
+      tilesetUrl,
+      available_dates: dataset.available_dates || [],
+    };
+  }
+
+  // --- all other types keep using STAC/feature listing fetch ---
+  const url = buildDatasetUrl(dataset); // This function is now fixed
+  const response = await fetch(url + `?limit=1000`);
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch data: ${response.status} - ${response.statusText}`
+    );
+  }
+  const data = await response.json();
+  return { ...data, datasetInfo: dataset, galleryType: dataset.type };
+};

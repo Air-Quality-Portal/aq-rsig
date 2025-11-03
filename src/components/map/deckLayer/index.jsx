@@ -328,12 +328,18 @@ export function DeckGlLayerManager({
         const { collection, id: itemId, properties } = feature;
         const datetime = properties?.datetime || properties?.start_datetime;
 
+        // --- THIS IS THE FIX ---
+        // Get the dynamic asset name (e.g., 'CO', 'O3') from the dataset metadata
+        // Fall back to 'cog_default' for your old datasets
+        const assetName = datasetMetadata.asset_name || 'cog_default';
+
         const tileParams = {
-          assets: 'cog_default',
+          assets: assetName, // This is now dynamic
           colormap: datasetMetadata.colormap || 'viridis',
           rescale: formatRescaleValues(datasetMetadata.rescale_values),
           nodata: '-9999',
         };
+        // --- END OF FIX ---
 
         const tileUrl = buildRasterTileUrl(
           collection,
@@ -583,6 +589,8 @@ export function DeckGlLayerManager({
       visible,
     });
   }, [layerOpacityList, visible]);
+
+
 
   useEffect(() => {
     setManagedLayers((prev) => {
