@@ -34,7 +34,7 @@ jobs:
 
       - uses: actions/setup-node@v3
         with:
-          node-version: 'v20.9.0'
+          node-version: 'v20.12.2'
 
       - name: Validate required variables and secrets
         run: |
