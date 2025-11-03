@@ -3,7 +3,7 @@ import Paper from '@mui/material/Paper';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import IconButton from '@mui/material/IconButton';
-import CloseIcon from '@mui/icons-material/Close';
+// import CloseIcon from '@mui/icons-material/Close'; // No longer needed here
 import DeleteIcon from '@mui/icons-material/Delete';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import OpacityIcon from '@mui/icons-material/Opacity';
@@ -21,138 +21,14 @@ import ListItemText from '@mui/material/ListItemText';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
+import { StaticLegend } from './Legend'; 
+
 const extractPressureLevel = (layerId) => {
   const match = layerId?.match(/-lev-([\d.]+)$/);
   return match ? parseFloat(match[1]) : null;
 };
 
-const formatNumber = (num) => {
-  if (num === null || num === undefined) return '';
-  if (num === 0) return '0';
-  const absNum = Math.abs(num);
-  if (absNum >= 1e6 || (absNum < 1e-3 && absNum > 0)) {
-    return num.toExponential(2);
-  }
-  if (!Number.isInteger(num)) {
-    return parseFloat(num.toPrecision(3));
-  }
-  return num.toLocaleString();
-};
-
-const StaticLegend = ({ dataset }) => {
-  const { type, stops, rescale_values, units } = dataset;
-
-  const renderGradientLegend = () => {
-    if (!stops || !rescale_values) return null;
-    const gradient = `linear-gradient(to right, ${stops
-      .map((c, i) => `${c} ${(i / (stops.length - 1)) * 100}%`)
-      .join(', ')})`;
-
-    return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-        <Box
-          sx={{
-            width: '100%',
-            height: 12,
-            background: gradient,
-            borderRadius: 1,
-          }}
-        />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-          <Typography
-            variant='caption'
-            sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
-          >
-            {formatNumber(rescale_values[0])}
-          </Typography>
-          <Typography
-            variant='caption'
-            sx={{ fontSize: '0.7rem', color: 'text.secondary' }}
-          >
-            {formatNumber(rescale_values[1])}
-          </Typography>
-        </Box>
-      </Box>
-    );
-  };
-
-  switch (type) {
-    case 'raster':
-    case 'netcdf-2d':
-      return renderGradientLegend();
-
-    case 'point-cloud':
-      return (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 0.5,
-            width: '100%',
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              width: '100%',
-              height: 12,
-              borderRadius: 1,
-              overflow: 'hidden',
-            }}
-          >
-            {[
-              { color: 'green', width: '25%' },
-              { color: 'blue', width: '25%' },
-              { color: 'yellow', width: '25%' },
-              { color: 'red', width: '25%' },
-            ].map((item, index) => (
-              <Box
-                key={index}
-                sx={{
-                  width: item.width,
-                  height: '100%',
-                  backgroundColor: item.color,
-                }}
-              />
-            ))}
-          </Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-            <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
-              0
-            </Typography>
-            <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
-              0.1
-            </Typography>
-            <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
-              0.5
-            </Typography>
-            <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
-              1.5
-            </Typography>
-            <Typography variant='caption' sx={{ fontSize: '0.7rem' }}>
-              2
-            </Typography>
-          </Box>
-          <Typography
-            variant='caption'
-            sx={{
-              fontSize: '0.65rem',
-              color: 'text.secondary',
-              textAlign: 'center',
-            }}
-          >
-            curtain : 0-31 KM Altitude - 
-          </Typography>
-        </Box>
-      );
-
-    case 'feature':
-      return null;
-
-    default:
-      return null;
-  }
-};
+// --- 'formatNumber' and 'StaticLegend' components have been removed ---
 
 const DatasetCard = ({
   dataset,
@@ -255,6 +131,8 @@ const DatasetCard = ({
               </IconButton>
             </Box>
             <Box sx={{ pt: 1, pl: '32px' }}>
+              {/* --- 2. NO CHANGE NEEDED HERE --- */}
+              {/* This component call remains identical */}
               <StaticLegend dataset={dataset} />
               <Box
                 sx={{

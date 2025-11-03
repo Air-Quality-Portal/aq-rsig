@@ -1,6 +1,9 @@
 // URL Builder for different dataset types
 export const buildDatasetUrl = (dataset) => {
-  const { id, type, url } = dataset;
+  console.log('Building URL for dataset:', dataset);
+  // const { id, type, url } = dataset;
+  const id = dataset.collection_id || dataset.id;
+  const { type, url } = dataset;
   const baseUrl = 'https://dev.openveda.cloud/api';
 
   switch (type) {
