@@ -8,7 +8,7 @@ export const galleryData = {
       description:
         'Berkeley High Resolution(BEHR) Ozone Monitoring Instrument (OMI) Integrated Column Amount of NO2 in the Tropopsphere.',
       units: 'molec/cm²',
-      rescale_values: [0.1e15, 6.4e15],
+      rescale_values: [100000000000000.0, 6400000000000000.0],
       colormap: 'viridis',
       info: 'https://amt.copernicus.org/articles/14/455/2021/',
       time_interval: 'Daily',
@@ -51,19 +51,17 @@ export const galleryData = {
       stops: ['#67001f', '#d6604d', '#f7f7f7', '#4393c3', '#053061'],
       is_animatable: true,
     },
-
-    // --- NEW GEOS-CF DATASETS START HERE ---
     {
-      id: 'geos-cf-ana-co', // Unique ID for the gallery
+      id: 'geos-cf-ana-co',
       name: 'GEOS-CF CO (Analysis)',
       type: 'raster',
-      thumbnailUrl: '/path/to/geos-cf-co-thumb.jpg', // You will need a thumbnail
+      thumbnailUrl: '/path/to/geos-cf-co-thumb.jpg',
       description: 'GEOS-CF analysis for Carbon Monoxide (CO).',
-      units: 'mol/mol', // You may need to verify units
-      rescale_values: [0, 10], // From STAC renders
-      colormap: 'ylorrd', // From STAC renders
-      collection_id: 'geos-cf-ana', // The actual STAC Collection ID
-      asset_name: 'CO', // The asset to render
+      units: 'mol/mol',
+      rescale_values: [0.05168840289115906, 4.343688488006592],
+      colormap: 'ylorrd',
+      collection_id: 'geos-cf-ana',
+      asset_name: 'CO',
       time_interval: 'hourly',
       start_date: '2025-10-22 00:30:00+00',
       end_date: '2025-10-26 23:30:00+00',
@@ -76,7 +74,7 @@ export const galleryData = {
       thumbnailUrl: '/path/to/geos-cf-o3-thumb.jpg',
       description: 'GEOS-CF analysis for Ozone (O₃).',
       units: 'mol/mol',
-      rescale_values: [0, 0.1],
+      rescale_values: [0.0013751559890806675, 0.08061760663986206],
       colormap: 'blues',
       collection_id: 'geos-cf-ana',
       asset_name: 'O3',
@@ -92,7 +90,7 @@ export const galleryData = {
       thumbnailUrl: '/path/to/geos-cf-no2-thumb.jpg',
       description: 'GEOS-CF analysis for Nitrogen Dioxide (NO₂).',
       units: 'mol/mol',
-      rescale_values: [0, 100],
+      rescale_values: [0, 5],
       colormap: 'greens',
       collection_id: 'geos-cf-ana',
       asset_name: 'NO2',
@@ -108,7 +106,7 @@ export const galleryData = {
       thumbnailUrl: '/path/to/geos-cf-so2-thumb.jpg',
       description: 'GEOS-CF analysis for Sulfur Dioxide (SO₂).',
       units: 'mol/mol',
-      rescale_values: [0, 100],
+      rescale_values: [1.6859344142972077e-8, 97.90528869628906],
       colormap: 'pink_r',
       collection_id: 'geos-cf-ana',
       asset_name: 'SO2',
@@ -124,7 +122,7 @@ export const galleryData = {
       thumbnailUrl: '/path/to/geos-cf-pm10-thumb.jpg',
       description: 'GEOS-CF analysis for PM₁₀.',
       units: 'kg/m³',
-      rescale_values: [0, 2432],
+      rescale_values: [0.28125, 1512],
       colormap: 'turbo',
       collection_id: 'geos-cf-ana',
       asset_name: 'PM10',
@@ -140,7 +138,7 @@ export const galleryData = {
       thumbnailUrl: '/path/to/geos-cf-pm25-thumb.jpg',
       description: 'GEOS-CF analysis for PM₂.₅.',
       units: 'kg/m³',
-      rescale_values: [0, 2432],
+      rescale_values: [0.138671875, 561],
       colormap: 'turbo',
       collection_id: 'geos-cf-ana',
       asset_name: 'PM25',
@@ -149,7 +147,6 @@ export const galleryData = {
       end_date: '2025-10-26 23:30:00+00',
       is_animatable: true,
     },
-    // --- END OF NEW DATASETS ---
   ],
   insitu: [
     {
